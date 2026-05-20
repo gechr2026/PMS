@@ -53,12 +53,12 @@
                             <div v-if="empSuggestions.length > 0" class="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
                                 <button
                                     v-for="emp in empSuggestions"
-                                    :key="emp.empCode"
+                                    :key="emp.emp_code"
                                     type="button"
                                     class="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 transition"
                                     @click="selectEmployee(emp)"
                                 >
-                                    <span class="font-semibold text-blue-600">{{ emp.empCode }}</span> — {{ emp.fullName }}
+                                    <span class="font-semibold text-blue-600">{{ emp.emp_code }}</span> — {{ emp.full_name }}
                                 </button>
                             </div>
                         </div>
@@ -114,7 +114,7 @@
                         <div>
                             <label class="mb-1.5 block text-sm font-semibold text-gray-700">ชื่อแบบประเมิน <span class="text-red-500">*</span></label>
                             <select
-                                v-model="form.assessmentId"
+                                v-model="form.assessment_id"
                                 class="w-full rounded-lg border px-3 py-2 text-sm text-gray-700 outline-none transition"
                                 :class="errors.assessmentId ? 'border-red-400' : 'border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'"
                                 @change="onAssessmentChange"

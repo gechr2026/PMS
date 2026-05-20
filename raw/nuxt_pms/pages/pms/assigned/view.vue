@@ -164,7 +164,7 @@
                             <th class="w-20 px-3 py-3 text-center font-semibold text-gray-700">เป้าหมาย</th>
                             <th v-for="n in 5" :key="n" class="w-20 px-2 py-3 text-center font-semibold text-gray-700">{{ n }}</th>
                             <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">ไม่สามารถ<br>ประเมินได้</th>
-                            <th v-if="isManager || isExecutive" class="w-14 px-2 py-3 text-center font-semibold text-gray-700">ปิด</th>
+                            <th v-if="isManager || isExecutive" class="w-20 px-2 py-3 text-center font-semibold text-gray-700 text-xs" title="ยกเว้นข้อนี้ไม่นับใน total score (admin override)">ยกเว้น</th>
                             <th v-if="isExecutive" class="w-16 px-2 py-3 text-center font-semibold text-gray-700">คะแนน</th>
                         </tr>
                     </thead>
@@ -203,11 +203,14 @@
                                     class="inline-flex h-7 w-7 items-center justify-center rounded-full border transition"
                                     :class="kpi.closed ? 'border-red-300 bg-red-50 text-red-500' : 'border-gray-300 bg-white text-gray-400 hover:bg-gray-50'"
                                     @click="kpi.closed = !kpi.closed"
-                                    :title="kpi.closed ? 'เปิด' : 'ปิด'"
+                                    :title="kpi.closed ? 'ยกเว้นจากการคำนวณ — คลิกเพื่อนำกลับมาประเมิน' : 'นับในคะแนนรวม — คลิกเพื่อยกเว้น'"
                                 >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                        <path v-if="!kpi.closed" d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
-                                        <path v-else d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle v-if="!kpi.closed" cx="12" cy="12" r="8" stroke-linecap="round"/>
+                                        <g v-else>
+                                            <circle cx="12" cy="12" r="9" stroke-linecap="round"/>
+                                            <path d="M6 6l12 12" stroke-linecap="round"/>
+                                        </g>
                                     </svg>
                                 </button>
                             </td>
@@ -215,6 +218,9 @@
                         </tr>
                     </tbody>
                 </table>
+                <p v-if="isManager || isExecutive" class="px-5 pb-3 pt-1 text-xs text-gray-500">
+                    💡 คอลัมน์ <b>ยกเว้น</b> ใช้สำหรับ manager/executive เพื่อระบุว่า KPI ข้อนี้ <b>ไม่นำมานับใน total score</b> เช่น พนักงานลาคลอดทั้งรอบ ทำ KPI นี้ไม่ทัน
+                </p>
             </div>
         </div>
 
@@ -246,7 +252,7 @@
                             <th class="w-16 px-3 py-3 text-center font-semibold text-gray-700">เป้าหมาย</th>
                             <th v-for="n in 5" :key="n" class="px-3 py-3 text-center font-semibold text-gray-700 min-w-[130px]">ระดับ {{ n }}</th>
                             <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">ไม่สามารถ<br>ประเมินได้</th>
-                            <th v-if="isManager || isExecutive" class="w-14 px-2 py-3 text-center font-semibold text-gray-700">ปิด</th>
+                            <th v-if="isManager || isExecutive" class="w-20 px-2 py-3 text-center font-semibold text-gray-700 text-xs" title="ยกเว้นข้อนี้ไม่นับใน total score (admin override)">ยกเว้น</th>
                             <th v-if="isExecutive" class="w-16 px-2 py-3 text-center font-semibold text-gray-700">คะแนน</th>
                         </tr>
                     </thead>
@@ -286,10 +292,14 @@
                                     class="inline-flex h-7 w-7 items-center justify-center rounded-full border transition"
                                     :class="comp.closed ? 'border-red-300 bg-red-50 text-red-500' : 'border-gray-300 bg-white text-gray-400 hover:bg-gray-50'"
                                     @click="comp.closed = !comp.closed"
+                                    :title="comp.closed ? 'ยกเว้นจากการคำนวณ — คลิกเพื่อนำกลับมาประเมิน' : 'นับในคะแนนรวม — คลิกเพื่อยกเว้น'"
                                 >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                        <path v-if="!comp.closed" d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
-                                        <path v-else d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle v-if="!comp.closed" cx="12" cy="12" r="8" stroke-linecap="round"/>
+                                        <g v-else>
+                                            <circle cx="12" cy="12" r="9" stroke-linecap="round"/>
+                                            <path d="M6 6l12 12" stroke-linecap="round"/>
+                                        </g>
                                     </svg>
                                 </button>
                             </td>
@@ -297,6 +307,9 @@
                         </tr>
                     </tbody>
                 </table>
+                <p v-if="isManager || isExecutive" class="px-5 pb-3 pt-1 text-xs text-gray-500">
+                    💡 คอลัมน์ <b>ยกเว้น</b> ใช้สำหรับ manager/executive เพื่อระบุว่า Competency ข้อนี้ <b>ไม่นำมานับใน total score</b> เช่น ข้อที่ไม่เหมาะกับ position ปัจจุบัน
+                </p>
             </div>
         </div>
 

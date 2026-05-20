@@ -27,11 +27,11 @@ export interface PmsSendRaterCreate {
 }
 
 export const usePmsSendRaters = () => {
-    const { client } = useSupabase();
+    const supabase = useSupabase();
 
     /** List raters for one send, joined with employee meta */
     const listBySend = async (sendId: number) => {
-        const { data, error } = await client
+        const { data, error } = await supabase
             .from('pms_assessment_send_raters')
             .select(
                 'id, send_id, evaluator_employee_id, evaluator_role, ' +
@@ -50,7 +50,7 @@ export const usePmsSendRaters = () => {
 
     /** Add a single rater */
     const create = async (body: PmsSendRaterCreate) => {
-        const { data, error } = await client
+        const { data, error } = await supabase
             .from('pms_assessment_send_raters')
             .insert(body)
             .select('*')
@@ -62,7 +62,7 @@ export const usePmsSendRaters = () => {
     /** Bulk add raters (atomic via single insert) */
     const bulkCreate = async (rows: PmsSendRaterCreate[]) => {
         if (rows.length === 0) return [];
-        const { data, error } = await client
+        const { data, error } = await supabase
             .from('pms_assessment_send_raters')
             .insert(rows)
             .select('*');
@@ -72,7 +72,7 @@ export const usePmsSendRaters = () => {
 
     /** Remove an assignment */
     const remove = async (id: number) => {
-        const { error } = await client
+        const { error } = await supabase
             .from('pms_assessment_send_raters')
             .delete()
             .eq('id', id);
@@ -81,7 +81,7 @@ export const usePmsSendRaters = () => {
 
     /** Mark a reminder email as sent */
     const markNotified = async (id: number) => {
-        const { error } = await client
+        const { error } = await supabase
             .from('pms_assessment_send_raters')
             .update({ notified_at: new Date().toISOString() })
             .eq('id', id);
@@ -90,7 +90,7 @@ export const usePmsSendRaters = () => {
 
     /** Toggle is_active (soft-disable) */
     const setActive = async (id: number, active: boolean) => {
-        const { error } = await client
+        const { error } = await supabase
             .from('pms_assessment_send_raters')
             .update({ is_active: active })
             .eq('id', id);
