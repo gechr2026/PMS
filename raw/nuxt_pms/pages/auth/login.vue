@@ -1,5 +1,5 @@
 <template>
-    <div class="min-h-screen flex flex-col" style="background: linear-gradient(135deg, #b8d4f0 0%, #c8e0f8 40%, #a8c8e8 100%);">
+    <div class="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col" style="background: linear-gradient(135deg, #b8d4f0 0%, #c8e0f8 40%, #a8c8e8 100%);">
 
         <!-- Header Bar -->
         <div class="flex-shrink-0 flex items-center gap-2 sm:gap-3 px-4 sm:px-6 lg:px-8 py-3">
@@ -20,7 +20,7 @@
 
         <!-- Main Content -->
         <div class="flex-1 min-h-0 flex justify-center px-4 sm:px-6 lg:px-10 pt-2 pb-4 sm:pb-6">
-            <div class="flex flex-col lg:flex-row w-full gap-4 lg:gap-5 lg:h-full" style="max-width: 1100px;">
+            <div class="flex flex-col lg:flex-row w-full max-w-full gap-4 lg:gap-5 lg:h-full lg:max-w-[1100px]">
 
                 <!-- Left Panel — hidden on small screens (decorative only) -->
                 <div class="hidden lg:flex lg:flex-[58] min-h-0 bg-white rounded-2xl px-10 pt-8 pb-0 shadow-lg flex-col overflow-hidden">
@@ -67,7 +67,7 @@
                 </div>
 
                 <!-- Right Panel -->
-                <div class="w-full lg:flex-[42] bg-white rounded-2xl px-6 sm:px-8 lg:px-10 py-6 sm:py-8 lg:py-0 shadow-lg flex flex-col items-center justify-center">
+                <div class="w-full max-w-md mx-auto lg:max-w-none lg:mx-0 lg:flex-[42] bg-white rounded-2xl px-6 sm:px-8 lg:px-10 py-6 sm:py-8 lg:py-0 shadow-lg flex flex-col items-center justify-center">
 
                     <!-- Mobile-only header (since left panel is hidden) -->
                     <div class="lg:hidden w-full mb-4 text-center">
@@ -76,14 +76,14 @@
                     </div>
 
                     <!-- Company Logo -->
-                    <div class="mb-4 sm:mb-6 flex flex-col items-center">
+                    <div class="mb-4 sm:mb-6 flex flex-col items-center w-full">
                         <img
                             src="/assets/images/LogoGEC.jpg"
                             alt="GEC Logo"
-                            class="mb-3 sm:mb-4 object-contain h-20 sm:h-28 lg:h-44 w-auto"
+                            class="mb-3 sm:mb-4 object-contain h-16 sm:h-24 lg:h-44 w-auto max-w-full"
                         />
-                        <p class="text-gray-700 font-semibold text-center text-xs sm:text-sm lg:text-base leading-relaxed">
-                            บริษัท เจเนอรัล อิเลคทรอนิค คอมเมอร์ช<br />เซอร์วิสเซส จำกัด
+                        <p class="text-gray-700 font-semibold text-center text-xs sm:text-sm lg:text-base leading-relaxed break-words">
+                            บริษัท เจเนอรัล อิเลคทรอนิค คอมเมอร์ช เซอร์วิสเซส จำกัด
                         </p>
                     </div>
 
@@ -215,7 +215,14 @@ import { reactive, ref, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { PmsAuthError } from '@/composables/useAuth';
 
-useHead({ title: 'เข้าสู่ระบบ | ระบบประเมินผลการปฏิบัติงาน' });
+useHead({
+    title: 'เข้าสู่ระบบ | ระบบประเมินผลการปฏิบัติงาน',
+    meta: [
+        // Defensive: ensure the viewport meta wins even if a stale build / SSR
+        // edge dropped the one from nuxt.config.ts.
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+    ],
+});
 
 definePageMeta({
     layout: false,
