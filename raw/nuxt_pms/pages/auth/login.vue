@@ -22,11 +22,11 @@
         <div class="flex-1 min-h-0 flex justify-center px-4 sm:px-6 lg:px-10 pt-2 pb-4 sm:pb-6">
             <div class="flex flex-col lg:flex-row w-full max-w-full gap-4 lg:gap-5 lg:h-full lg:max-w-[1100px]">
 
-                <!-- Left Panel — hidden on small screens (decorative only) -->
-                <div class="hidden lg:flex lg:flex-[58] min-h-0 bg-white rounded-2xl px-10 pt-8 pb-0 shadow-lg flex-col overflow-hidden">
+                <!-- Left Panel — full-width on mobile, 58% on desktop -->
+                <div class="w-full lg:flex-[58] min-h-0 bg-white rounded-2xl px-6 sm:px-8 lg:px-10 pt-6 sm:pt-8 pb-6 lg:pb-0 shadow-lg flex flex-col lg:overflow-hidden">
 
                     <div class="flex-shrink-0 mb-4">
-                        <h2 class="text-3xl font-bold text-gray-800 mb-1">เข้าสู่ระบบ</h2>
+                        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">เข้าสู่ระบบ</h2>
                         <p class="text-gray-400 text-sm">ยินดีต้อนรับ</p>
                         <div class="mt-3 border-b border-gray-200"></div>
                     </div>
@@ -43,21 +43,22 @@
                                     <rect x="13" y="12" width="4" height="3" rx="0.5" fill="#4361ee" fill-opacity="0.4" />
                                 </svg>
                             </div>
-                            <div>
-                                <p class="text-gray-800 font-semibold text-sm">แบบประเมินผลการปฏิบัติงานประจำปี 2569/1</p>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-gray-800 font-semibold text-sm break-words">แบบประเมินผลการปฏิบัติงานประจำปี 2569/1</p>
                                 <div class="flex items-center gap-1 mt-1">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <svg class="flex-shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <rect x="3" y="4" width="18" height="17" rx="2" stroke="#9ca3af" stroke-width="1.5" />
                                         <path d="M3 9h18" stroke="#9ca3af" stroke-width="1.5" />
                                         <path d="M8 2v4M16 2v4" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" />
                                     </svg>
-                                    <p class="text-gray-500 text-xs">15 ตุลาคม 2569 - 25 พฤศจิกายน 2569</p>
+                                    <p class="text-gray-500 text-xs break-words">15 ตุลาคม 2569 - 25 พฤศจิกายน 2569</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="flex-1 min-h-0 flex items-end justify-center">
+                    <!-- Illustration — desktop only (decorative, would dominate on mobile) -->
+                    <div class="hidden lg:flex flex-1 min-h-0 items-end justify-center">
                         <img
                             src="/assets/images/s1.png"
                             alt="Illustration"
@@ -66,14 +67,8 @@
                     </div>
                 </div>
 
-                <!-- Right Panel -->
-                <div class="w-full max-w-md mx-auto lg:max-w-none lg:mx-0 lg:flex-[42] bg-white rounded-2xl px-6 sm:px-8 lg:px-10 py-6 sm:py-8 lg:py-0 shadow-lg flex flex-col items-center justify-center">
-
-                    <!-- Mobile-only header (since left panel is hidden) -->
-                    <div class="lg:hidden w-full mb-4 text-center">
-                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">เข้าสู่ระบบ</h2>
-                        <p class="text-gray-400 text-xs sm:text-sm">ยินดีต้อนรับ</p>
-                    </div>
+                <!-- Right Panel — full-width on mobile, 42% on desktop -->
+                <div class="w-full lg:flex-[42] bg-white rounded-2xl px-6 sm:px-8 lg:px-10 py-6 sm:py-8 lg:py-0 shadow-lg flex flex-col items-center justify-center">
 
                     <!-- Company Logo -->
                     <div class="mb-4 sm:mb-6 flex flex-col items-center w-full">
