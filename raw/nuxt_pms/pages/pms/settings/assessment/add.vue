@@ -171,17 +171,27 @@
                             </select>
                         </div>
                     </div>
+                    <p v-if="errors.weights" class="mt-2 text-xs font-medium text-red-500">{{ errors.weights }}</p>
                 </div>
 
                 <!-- ── Section 2: แบบประเมิน KPIs (ซ่อนสำหรับ Competency 360°) ── -->
                 <div v-if="!isCompetencyOnly" class="mb-6 border-t border-gray-100 pt-6">
-                    <div class="mb-3 flex items-center gap-2">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8">
-                            <line x1="3" y1="6"  x2="21" y2="6"  stroke-linecap="round"/>
-                            <line x1="3" y1="12" x2="21" y2="12" stroke-linecap="round"/>
-                            <line x1="3" y1="18" x2="21" y2="18" stroke-linecap="round"/>
-                        </svg>
-                        <span class="text-sm font-bold text-gray-700">แบบประเมิน KPIs</span>
+                    <div class="mb-3 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8">
+                                <line x1="3" y1="6"  x2="21" y2="6"  stroke-linecap="round"/>
+                                <line x1="3" y1="12" x2="21" y2="12" stroke-linecap="round"/>
+                                <line x1="3" y1="18" x2="21" y2="18" stroke-linecap="round"/>
+                            </svg>
+                            <span class="text-sm font-bold text-gray-700">แบบประเมิน KPIs</span>
+                        </div>
+                        <span
+                            class="rounded-full px-3 py-1 text-xs font-semibold"
+                            :class="isKpiWeightSumValid ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'"
+                        >
+                            ผลรวมน้ำหนัก: {{ kpiWeightSum.toFixed(2) }} / 1.00
+                            <span v-if="!isKpiWeightSumValid">⚠</span>
+                        </span>
                     </div>
 
                     <div class="overflow-x-auto rounded-xl border border-gray-200">
@@ -255,23 +265,33 @@
                         </table>
                     </div>
 
-                    <div class="mt-3">
+                    <div class="mt-3 flex items-center gap-3">
                         <button type="button" class="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50" @click="addKpi">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
                             เพิ่มแถว
                         </button>
+                        <p v-if="errors.kpis" class="text-xs font-medium text-red-500">{{ errors.kpis }}</p>
                     </div>
                 </div>
 
                 <!-- ── Section 3: แบบประเมิน Competency ── -->
                 <div class="mb-6 border-t border-gray-100 pt-6">
-                    <div class="mb-3 flex items-center gap-2">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8">
-                            <line x1="3" y1="6"  x2="21" y2="6"  stroke-linecap="round"/>
-                            <line x1="3" y1="12" x2="21" y2="12" stroke-linecap="round"/>
-                            <line x1="3" y1="18" x2="21" y2="18" stroke-linecap="round"/>
-                        </svg>
-                        <span class="text-sm font-bold text-gray-700">แบบประเมิน Competency</span>
+                    <div class="mb-3 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8">
+                                <line x1="3" y1="6"  x2="21" y2="6"  stroke-linecap="round"/>
+                                <line x1="3" y1="12" x2="21" y2="12" stroke-linecap="round"/>
+                                <line x1="3" y1="18" x2="21" y2="18" stroke-linecap="round"/>
+                            </svg>
+                            <span class="text-sm font-bold text-gray-700">แบบประเมิน Competency</span>
+                        </div>
+                        <span
+                            class="rounded-full px-3 py-1 text-xs font-semibold"
+                            :class="isCompetencyWeightSumValid ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'"
+                        >
+                            ผลรวมน้ำหนัก: {{ competencyWeightSum.toFixed(2) }} / 1.00
+                            <span v-if="!isCompetencyWeightSumValid">⚠</span>
+                        </span>
                     </div>
 
                     <div class="overflow-x-auto rounded-xl border border-gray-200">
@@ -341,11 +361,12 @@
                         </table>
                     </div>
 
-                    <div class="mt-3">
+                    <div class="mt-3 flex items-center gap-3">
                         <button type="button" class="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50" @click="addCompetency">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
                             เพิ่มแถว
                         </button>
+                        <p v-if="errors.competencies" class="text-xs font-medium text-red-500">{{ errors.competencies }}</p>
                     </div>
                 </div>
 
@@ -461,9 +482,8 @@ const form = reactive<FormState>({
 });
 
 const typeOptions: Array<{ value: AssessmentType; label: string; hint: string }> = [
-    { value: 'annual_supervisor', label: 'ประจำปี - หัวหน้างาน',  hint: 'KPI + Competency, ประเมิน 180° (CEO/SVP-VP/Manager)' },
-    { value: 'competency_360',    label: 'สมรรถนะ Competency 360°', hint: 'Competency only, ประเมินทุกทิศ (peer/subordinate/supervisor)' },
-    { value: 'annual_self',       label: 'ประจำปี - ตนเอง',          hint: 'KPI + Competency, ประเมินตนเอง' },
+    { value: 'annual_supervisor', label: 'ประจำปี',                  hint: 'KPI + Competency — เลือกผู้ประเมินตอนสร้าง send (self / หัวหน้า / ผู้บริหาร / CEO)' },
+    { value: 'competency_360',    label: 'สมรรถนะ Competency 360°', hint: 'Competency only, ประเมินทุกทิศ (peer / subordinate / supervisor)' },
 ];
 
 const isCompetencyOnly = computed(() => form.type === 'competency_360');
@@ -524,6 +544,17 @@ const availableTargetIndices = (row: { options: string[] }): number[] =>
         .map((v, i) => (v && v.trim() !== '' ? i + 1 : null))
         .filter((x): x is number => x !== null);
 
+// Running sum of item weights (must equal 1.00 to save). Shown live next to
+// section headers so the admin sees the running total as they edit.
+const kpiWeightSum        = computed(() =>
+    kpiRows.value.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0));
+const competencyWeightSum = computed(() =>
+    competencyRows.value.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0));
+// Tolerance for float-equality on 0.01-stepped inputs (e.g. 0.3+0.7 = 0.9999…)
+const WEIGHT_SUM_EPS = 0.001;
+const isKpiWeightSumValid        = computed(() => Math.abs(kpiWeightSum.value - 1) < WEIGHT_SUM_EPS);
+const isCompetencyWeightSumValid = computed(() => Math.abs(competencyWeightSum.value - 1) < WEIGHT_SUM_EPS);
+
 // ── Validation ─────────────────────────────────────────────────────────
 const validate = (): boolean => {
     Object.keys(errors).forEach(k => (errors as any)[k] = '');
@@ -574,6 +605,11 @@ const validate = (): boolean => {
                 }
             }
         }
+        // Sum of KPI item weights must equal 1.00 (exactly, with float tolerance).
+        if (!errors.kpis && kpiRows.value.length > 0 && !isKpiWeightSumValid.value) {
+            errors.kpis = `ผลรวมน้ำหนัก KPI ต้องเท่ากับ 1.00 (ปัจจุบัน ${kpiWeightSum.value.toFixed(2)})`;
+            valid = false;
+        }
     }
     // Competencies similar
     if (competencyRows.value.length === 0) { errors.competencies = 'ต้องมี Competency อย่างน้อย 1 ข้อ'; valid = false; }
@@ -596,6 +632,11 @@ const validate = (): boolean => {
                 valid = false; break;
             }
         }
+    }
+    // Sum of Competency item weights must equal 1.00.
+    if (!errors.competencies && competencyRows.value.length > 0 && !isCompetencyWeightSumValid.value) {
+        errors.competencies = `ผลรวมน้ำหนัก Competency ต้องเท่ากับ 1.00 (ปัจจุบัน ${competencyWeightSum.value.toFixed(2)})`;
+        valid = false;
     }
     return valid;
 };
@@ -702,7 +743,11 @@ onMounted(async () => {
         try {
             const res = await assessmentsApi.get(editId.value);
             const a = res.data;
-            form.type             = (a.type ?? 'annual_supervisor') as AssessmentType;
+            // Coerce legacy 'annual_self' rows to 'annual_supervisor' on display.
+            // DB migration on 2026-05-22 swept all of them, but coerce defensively
+            // in case any slip in via direct SQL or an older client.
+            const rawType = a.type ?? 'annual_supervisor';
+            form.type = (rawType === 'annual_self' ? 'annual_supervisor' : rawType) as AssessmentType;
             form.name             = a.name;
             form.year_id          = a.year_id;
             form.cycle_id         = a.cycle_id;

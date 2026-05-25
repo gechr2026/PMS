@@ -92,23 +92,23 @@
             <div class="mb-4 grid grid-cols-3 gap-4">
                 <div class="rounded-xl p-4 text-white" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">
                     <p class="text-xs font-semibold opacity-90">คะแนนการประเมิน KPI เฉลี่ย</p>
-                    <p class="mt-1 text-2xl font-bold">{{ formatScore(data.summary.avg_kpi_score) }}</p>
+                    <p class="mt-1 text-2xl font-bold">{{ formatScore(summaryKpiAvg) }}</p>
                 </div>
                 <div class="rounded-xl p-4 text-white" style="background:linear-gradient(135deg,#3b82f6,#60a5fa);">
                     <p class="text-xs font-semibold opacity-90">คะแนนการประเมิน Competency เฉลี่ย</p>
-                    <p class="mt-1 text-2xl font-bold">{{ formatScore(data.summary.avg_competency_score) }}</p>
+                    <p class="mt-1 text-2xl font-bold">{{ formatScore(summaryCompAvg) }}</p>
                 </div>
                 <div class="rounded-xl p-4 text-white" style="background:linear-gradient(135deg,#10b981,#34d399);">
                     <p class="text-xs font-semibold opacity-90">ผลการประเมินรวมเฉลี่ย</p>
                     <p class="mt-1 text-2xl font-bold">
-                        {{ formatScore(data.summary.avg_total_score) }}
+                        {{ formatScore(summaryTotalAvg) }}
                         <span v-if="data.summary.final_grade" class="text-base font-semibold opacity-80">({{ data.summary.final_grade }})</span>
                     </p>
                 </div>
             </div>
 
             <!-- Per-role aggregates (360°) — peer mean / subordinate mean / etc. -->
-            <div v-if="data.per_role && data.per_role.length > 0" class="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div v-if="perRoleStats.length > 0" class="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div class="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4361ee" stroke-width="1.8">
                         <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18" stroke-linecap="round"/>
@@ -128,7 +128,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="pr in data.per_role" :key="pr.evaluator_role" class="border-b border-gray-100 transition hover:bg-gray-50">
+                            <tr v-for="pr in perRoleStats" :key="pr.evaluator_role" class="border-b border-gray-100 transition hover:bg-gray-50">
                                 <td class="px-4 py-2.5 font-medium text-gray-800">{{ perRoleLabel(pr.evaluator_role) }}</td>
                                 <td class="px-4 py-2.5 text-center text-gray-600">{{ pr.rater_count }}</td>
                                 <td class="px-4 py-2.5 text-center" :class="pr.submitted_count === pr.rater_count ? 'text-green-600 font-semibold' : 'text-gray-600'">{{ pr.submitted_count }}/{{ pr.rater_count }}</td>
@@ -142,7 +142,7 @@
             </div>
 
             <!-- Per-evaluator breakdown -->
-            <div v-if="data.evaluations.length > 0" class="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div v-if="evaluatorStats.length > 0" class="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div class="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4361ee" stroke-width="1.8">
                         <rect x="3" y="3" width="7" height="4" rx="1"/><rect x="3" y="11" width="7" height="4" rx="1"/>
@@ -163,7 +163,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="ev in data.evaluations" :key="ev.id" class="border-b border-gray-100">
+                            <tr v-for="ev in evaluatorStats" :key="ev.id" class="border-b border-gray-100">
                                 <td class="px-4 py-3 font-medium text-gray-800">{{ roleLabel(ev.evaluator_role) }}</td>
                                 <td class="px-4 py-3 text-center">
                                     <span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold" :class="statusClass(ev.status)">
@@ -222,17 +222,17 @@
                                 <td class="px-4 py-3 text-center text-gray-600">{{ idx + 1 }}</td>
                                 <td class="px-4 py-3 font-medium text-gray-800">{{ kpi.subject }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ kpi.detail || '—' }}</td>
-                                <td class="px-4 py-3 text-center font-semibold text-gray-800">{{ formatScore(kpi.avg_score) }}</td>
+                                <td class="px-4 py-3 text-center font-semibold text-gray-800">{{ formatScore(itemAvgSelectedOption(kpi)) }}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
                 <!-- สิ่งที่ต้องปรับปรุง -->
-                <div v-if="data.kpi_improvements.length > 0">
+                <div v-if="kpiImprovements.length > 0">
                     <p class="mb-2 text-sm font-semibold text-gray-700">สิ่งที่ต้องปรับปรุง</p>
                     <ol class="list-decimal pl-5 space-y-1">
-                        <li v-for="item in data.kpi_improvements" :key="item.id" class="text-sm text-gray-600">
+                        <li v-for="item in kpiImprovements" :key="item.id" class="text-sm text-gray-600">
                             {{ item.subject }}
                             <span class="ml-2 text-xs text-gray-400">(คะแนนเฉลี่ย: {{ formatScore(item.avg_score) }})</span>
                         </li>
@@ -265,17 +265,17 @@
                             <tr v-for="(comp, idx) in data.competencies" :key="comp.id" class="border-b border-gray-100 transition hover:bg-gray-50">
                                 <td class="px-4 py-3 text-center text-gray-600">{{ idx + 1 }}</td>
                                 <td class="px-4 py-3 text-gray-800 whitespace-pre-line">{{ comp.subject }}</td>
-                                <td class="px-4 py-3 text-center font-semibold text-gray-800">{{ formatScore(comp.avg_score) }}</td>
+                                <td class="px-4 py-3 text-center font-semibold text-gray-800">{{ formatScore(itemAvgSelectedOption(comp)) }}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
                 <!-- ด้านที่ต้องปรับปรุง -->
-                <div v-if="data.competency_improvements.length > 0">
+                <div v-if="competencyImprovements.length > 0">
                     <p class="mb-2 text-sm font-semibold text-gray-700">ด้านที่ต้องปรับปรุง</p>
                     <ol class="list-decimal pl-5 space-y-1">
-                        <li v-for="item in data.competency_improvements" :key="item.id" class="text-sm text-gray-600">
+                        <li v-for="item in competencyImprovements" :key="item.id" class="text-sm text-gray-600">
                             {{ item.subject }}
                             <span class="ml-2 text-xs text-gray-400">(คะแนนเฉลี่ย: {{ formatScore(item.avg_score) }})</span>
                         </li>
@@ -302,7 +302,11 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { PmsApiError } from '@/composables/usePmsApi';
-import type { PmsEvaluationResultDetail } from '@/composables/usePmsEvaluationResults';
+import type {
+    PmsEvaluationResultDetail,
+    PmsEvaluationResultItem,
+    PmsEvaluationResultImprovement,
+} from '@/composables/usePmsEvaluationResults';
 
 useHead({ title: 'ผลการประเมิน | ระบบประเมินผลการปฏิบัติงาน' });
 definePageMeta({ layout: 'pms-layout' });
@@ -339,6 +343,141 @@ const formatScore = (n: number | null | undefined): string => {
     return Number(n).toFixed(2);
 };
 
+// ---- selected_option (1-5) computations ----
+// Per-item mean across ALL raters (includes self) — used for "คะแนนเฉลี่ย" column
+const itemAvgSelectedOption = (item: PmsEvaluationResultItem): number | null => {
+    const counted = (item.by_evaluator || []).filter(r =>
+        !r.is_closed
+        && r.selected_option !== null
+        && r.selected_option !== undefined
+        && Number(r.selected_option) !== 0,
+    );
+    if (counted.length === 0) return null;
+    const sum = counted.reduce((s, r) => s + Number(r.selected_option), 0);
+    return sum / counted.length;
+};
+
+// Per-role mean across all items — used for "สรุปคะแนนเฉลี่ยตามบทบาท"
+const meanByRole = (items: PmsEvaluationResultItem[], role: string): number | null => {
+    const samples: number[] = [];
+    for (const it of items) {
+        for (const r of (it.by_evaluator || [])) {
+            if (r.evaluator_role !== role) continue;
+            if (r.is_closed) continue;
+            if (r.selected_option === null || r.selected_option === undefined) continue;
+            if (Number(r.selected_option) === 0) continue;
+            samples.push(Number(r.selected_option));
+        }
+    }
+    if (samples.length === 0) return null;
+    return samples.reduce((s, n) => s + n, 0) / samples.length;
+};
+
+// Per-evaluator mean across all items — used for "คะแนนแยกตามผู้ประเมิน"
+const meanByEvaluator = (items: PmsEvaluationResultItem[], evaluationId: number): number | null => {
+    const samples: number[] = [];
+    for (const it of items) {
+        for (const r of (it.by_evaluator || [])) {
+            if (r.evaluation_id !== evaluationId) continue;
+            if (r.is_closed) continue;
+            if (r.selected_option === null || r.selected_option === undefined) continue;
+            if (Number(r.selected_option) === 0) continue;
+            samples.push(Number(r.selected_option));
+        }
+    }
+    if (samples.length === 0) return null;
+    return samples.reduce((s, n) => s + n, 0) / samples.length;
+};
+
+interface PerRoleStatRow {
+    evaluator_role: string;
+    rater_count: number;
+    submitted_count: number;
+    kpi_mean: number | null;
+    competency_mean: number | null;
+    total_mean: number | null;
+}
+
+const perRoleStats = computed<PerRoleStatRow[]>(() => {
+    if (!data.value) return [];
+    return data.value.per_role.map(pr => {
+        const kpi  = meanByRole(data.value!.kpis,         pr.evaluator_role);
+        const comp = meanByRole(data.value!.competencies, pr.evaluator_role);
+        let total: number | null = null;
+        if (kpi !== null && comp !== null) total = (kpi + comp) / 2;
+        else if (kpi !== null) total = kpi;
+        else if (comp !== null) total = comp;
+        return {
+            evaluator_role:  pr.evaluator_role,
+            rater_count:     Number(pr.rater_count ?? 0),
+            submitted_count: Number(pr.submitted_count ?? 0),
+            kpi_mean:        kpi,
+            competency_mean: comp,
+            total_mean:      total,
+        };
+    });
+});
+
+interface EvaluatorStatRow {
+    id: number;
+    evaluator_role: string;
+    status: string;
+    grade: string | null;
+    kpi_score: number | null;
+    competency_score: number | null;
+    total_score: number | null;
+}
+
+const evaluatorStats = computed<EvaluatorStatRow[]>(() => {
+    if (!data.value) return [];
+    return data.value.evaluations.map(ev => {
+        const kpi  = meanByEvaluator(data.value!.kpis,         ev.id);
+        const comp = meanByEvaluator(data.value!.competencies, ev.id);
+        let total: number | null = null;
+        if (kpi !== null && comp !== null) total = (kpi + comp) / 2;
+        else if (kpi !== null) total = kpi;
+        else if (comp !== null) total = comp;
+        return {
+            id: ev.id,
+            evaluator_role: ev.evaluator_role,
+            status: ev.status,
+            grade: ev.grade,
+            kpi_score: kpi,
+            competency_score: comp,
+            total_score: total,
+        };
+    });
+});
+
+// Top boxes = mean of role means (mirrors DB formula but in 1-5 space)
+const meanOf = (vals: Array<number | null>): number | null => {
+    const v = vals.filter((n): n is number => n !== null);
+    if (v.length === 0) return null;
+    return v.reduce((s, n) => s + n, 0) / v.length;
+};
+
+const summaryKpiAvg   = computed<number | null>(() => meanOf(perRoleStats.value.map(r => r.kpi_mean)));
+const summaryCompAvg  = computed<number | null>(() => meanOf(perRoleStats.value.map(r => r.competency_mean)));
+const summaryTotalAvg = computed<number | null>(() => meanOf(perRoleStats.value.map(r => r.total_mean)));
+
+// Bottom-3 improvements computed from itemAvgSelectedOption
+const buildImprovements = (items: PmsEvaluationResultItem[]): PmsEvaluationResultImprovement[] => {
+    return [...items]
+        .map(k => ({ id: k.id, subject: k.subject, sort_order: k.sort_order, avg_score: itemAvgSelectedOption(k) }))
+        .sort((a, b) => {
+            if (a.avg_score === null && b.avg_score === null) return a.sort_order - b.sort_order;
+            if (a.avg_score === null) return 1;
+            if (b.avg_score === null) return -1;
+            if (a.avg_score !== b.avg_score) return a.avg_score - b.avg_score;
+            return a.sort_order - b.sort_order;
+        })
+        .slice(0, 3)
+        .map(({ id, subject, avg_score }) => ({ id, subject, avg_score }));
+};
+
+const kpiImprovements        = computed<PmsEvaluationResultImprovement[]>(() => data.value ? buildImprovements(data.value.kpis)         : []);
+const competencyImprovements = computed<PmsEvaluationResultImprovement[]>(() => data.value ? buildImprovements(data.value.competencies) : []);
+
 const gradeClass = (grade: string | null) => {
     if (!grade) return 'bg-gray-100 text-gray-600';
     const map: Record<string, string> = {
@@ -371,15 +510,13 @@ const perRoleLabel = (role: string): string => {
     return role;
 };
 const statusLabel = (s: string): string => {
-    if (s === 'draft')     return 'ร่าง';
-    if (s === 'submitted') return 'ส่งแล้ว';
-    if (s === 'approved')  return 'อนุมัติแล้ว';
+    if (s === 'draft') return 'ร่าง';
+    if (s === 'sent')  return 'ส่งแล้ว';
     return s;
 };
 const statusClass = (s: string): string => {
-    if (s === 'draft')     return 'bg-gray-100 text-gray-600';
-    if (s === 'submitted') return 'bg-blue-100 text-blue-700';
-    if (s === 'approved')  return 'bg-green-100 text-green-700';
+    if (s === 'draft') return 'bg-gray-100 text-gray-600';
+    if (s === 'sent')  return 'bg-green-100 text-green-700';
     return 'bg-gray-100 text-gray-600';
 };
 

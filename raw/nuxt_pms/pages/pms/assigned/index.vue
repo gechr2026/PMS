@@ -113,19 +113,19 @@
                                 >{{ item.derivedStatus }}</span>
                             </td>
                             <td class="px-4 py-3 text-center">
-                                <!-- Edit: ยังไม่ทำ / กำลังทำ -->
+                                <!-- Edit (or admin-revert): not-yet-sent OR caller is admin -->
                                 <NuxtLink
-                                    v-if="item.derivedStatus !== 'ประเมินเสร็จสิ้นแล้ว'"
-                                    :to="`/pms/assigned/view?send_id=${item.send_id}`"
+                                    v-if="item.derivedStatus !== 'ประเมินเสร็จสิ้นแล้ว' || isAdmin"
+                                    :to="`/pms/assigned/view?send_id=${item.send_id}${item.assessment_id ? '&assessment_id=' + item.assessment_id : ''}`"
                                     class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-500 transition hover:bg-blue-100"
-                                    title="ทำแบบประเมิน"
+                                    :title="item.derivedStatus === 'ประเมินเสร็จสิ้นแล้ว' ? 'เปิดดู / ปลดล็อกเป็นร่าง' : 'ทำแบบประเมิน'"
                                 >
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
                                 </NuxtLink>
-                                <!-- View: ประเมินเสร็จ -->
+                                <!-- View (read-only) for non-admin once status='sent' -->
                                 <NuxtLink
                                     v-else
                                     :to="`/pms/assigned/view?send_id=${item.send_id}&readonly=1`"
@@ -147,7 +147,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { PmsApiError } from '@/composables/usePmsApi';
 import type { PmsSend } from '@/composables/usePmsSends';
 import type { PmsEvaluation, PmsEvaluationRole } from '@/composables/usePmsEvaluations';
@@ -167,6 +167,9 @@ type DerivedStatus = 'ยังไม่เข้าทำแบบประเ�
 
 interface Row {
     send_id: number;
+    /** Primary assessment for this task — when a send has multiple assessments,
+     *  we link to the first (admin can navigate further from view page). */
+    assessment_id: number | null;
     full_name: string;
     emp_code: string;
     assessment_name: string;
@@ -185,6 +188,9 @@ const errorMessage   = ref('');
 const filterYear   = ref('');
 const filterCycle  = ref('');
 const filterStatus = ref<DerivedStatus | ''>('');
+
+// Admin sees edit-link even for sent rows so they can revert via the view page.
+const isAdmin = computed(() => profile.value?.role === 'admin');
 
 // Map current user's role -> evaluator_role they're responsible for
 const evaluatorRoleForUser = (): PmsEvaluationRole => {
@@ -212,26 +218,21 @@ const fetchData = async () => {
     loading.value = true;
     errorMessage.value = '';
     try {
-        // 1) sends — officer ดูเฉพาะของตนเอง · role อื่นดูทุก send
+        // 1) sends — scope to the current user's rater assignments.
+        // officer→self, manager→manager, executive→executive. Admin sees all
+        // (no scoping) so they can browse the whole org from this page.
         const role = profile.value?.role;
-        const isOfficer = role === 'officer';
+        const myRole = evaluatorRoleForUser();
+        const isAdmin = role === 'admin';
 
         const sendsRes = await sendsApi.list({
             year:  filterYear.value  ? Number(filterYear.value) : undefined,
             cycle: filterCycle.value || undefined,
-            // Officer: filter by their own employee record (auth_user_id matched)
-            // We don't know our own employee_id here, so we let RLS filter:
-            // (sends are visible to all auth users, but downstream we filter rows)
+            ...(isAdmin ? {} : { as_rater: 'me' as const, evaluator_role: myRole }),
             limit: 500,
         });
 
-        let sends: PmsSend[] = sendsRes.data;
-
-        // For officer: only keep sends where employee.username matches user's email
-        // (since pms_employees.auth_user_id may not be linked, we fallback to username)
-        if (isOfficer && profile.value?.email) {
-            sends = sends.filter(s => s.username === profile.value!.email);
-        }
+        const sends: PmsSend[] = sendsRes.data;
 
         if (sends.length === 0) {
             rows.value = [];
@@ -239,7 +240,6 @@ const fetchData = async () => {
         }
 
         // 2) Load my evaluation for each send (parallel)
-        const myRole = evaluatorRoleForUser();
         const evals = await Promise.all(
             sends.map(s =>
                 evaluationsApi
@@ -254,7 +254,8 @@ const fetchData = async () => {
             const e = evals[i];
             let derived: DerivedStatus = 'ยังไม่เข้าทำแบบประเมิน';
             if (e) {
-                if (e.status === 'submitted' || e.status === 'approved') {
+                // Status simplified 2026-05-22: 'sent' = locked/done; 'draft' = in-progress.
+                if (e.status === 'sent') {
                     derived = 'ประเมินเสร็จสิ้นแล้ว';
                 } else if (e.status === 'draft') {
                     derived = 'อยู่ระหว่างการประเมิน';
@@ -262,9 +263,10 @@ const fetchData = async () => {
             }
             return {
                 send_id: s.id,
+                assessment_id: s.assessments[0]?.id ?? null,
                 full_name: s.full_name ?? '-',
                 emp_code: s.emp_code ?? '',
-                assessment_name: s.assessment_name ?? '-',
+                assessment_name: s.primary_assessment_name ?? '-',
                 year: s.year ?? '',
                 cycle_label: s.cycle_label ?? '',
                 rawSendStatus: s.status,

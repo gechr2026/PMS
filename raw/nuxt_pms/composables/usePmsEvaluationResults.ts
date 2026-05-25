@@ -81,6 +81,7 @@ export interface PmsEvaluationResultItem {
     options: string[];
     avg_score: number | null;
     by_evaluator: Array<{
+        evaluation_id: number;
         evaluator_role: PmsEvaluationRole;
         selected_option: number | null;
         is_closed: boolean;

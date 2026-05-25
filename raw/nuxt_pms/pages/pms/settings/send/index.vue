@@ -137,7 +137,14 @@
                                 <div>{{ item.full_name }}</div>
                                 <span class="inline-block mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" :class="statusBadgeClass(item.status)">{{ item.status }}</span>
                             </td>
-                            <td class="px-4 py-3 text-gray-800">{{ item.assessment_name }}</td>
+                            <td class="px-4 py-3 text-gray-800">
+                                <div v-if="item.assessment_count === 0" class="text-xs text-gray-400">—</div>
+                                <div v-else-if="item.assessment_count === 1">{{ item.primary_assessment_name }}</div>
+                                <div v-else>
+                                    <div>{{ item.primary_assessment_name }}</div>
+                                    <div class="text-[11px] text-gray-400">+{{ item.assessment_count - 1 }} แบบประเมิน</div>
+                                </div>
+                            </td>
                             <td class="px-4 py-3 text-center">
                                 <div class="flex items-center justify-center gap-1.5">
                                     <button
@@ -290,10 +297,8 @@ const fetchList = async () => {
         const res = await sendsApi.list({
             year: searchYear.value ? Number(searchYear.value) : undefined,
             cycle: searchCycle.value || undefined,
-            assessment_name: searchForm.value.trim() || undefined,
-            dept: searchDept.value || undefined,
-            team: searchTeam.value || undefined,
-            position: searchPosition.value || undefined,
+            // assessment_name filter dropped 2026-05-22 — sends no longer reference
+            // a single assessment; filter by assessment now happens per-rater.
             emp_code: searchEmpCode.value.trim() || undefined,
             full_name: searchName.value.trim() || undefined,
             limit: 500,

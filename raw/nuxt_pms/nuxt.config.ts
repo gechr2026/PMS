@@ -78,5 +78,33 @@ export default defineNuxtConfig({
         },
     },
 
+    // Security headers (F7 from 2026-05-23 review). Applied to every route.
+    // CSP allows: Google Fonts CSS+font files, Supabase functions/realtime, self.
+    // 'unsafe-inline' on script/style is required by Nuxt hydration + Vue runtime styles;
+    // can be tightened to nonces later.
+    routeRules: {
+        '/**': {
+            headers: {
+                'X-Frame-Options': 'DENY',
+                'X-Content-Type-Options': 'nosniff',
+                'Referrer-Policy': 'strict-origin-when-cross-origin',
+                'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
+                'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), interest-cohort=()',
+                'Content-Security-Policy': [
+                    "default-src 'self'",
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+                    "font-src 'self' https://fonts.gstatic.com data:",
+                    "img-src 'self' data: blob:",
+                    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+                    "frame-ancestors 'none'",
+                    "base-uri 'self'",
+                    "form-action 'self'",
+                    "object-src 'none'",
+                ].join('; '),
+            },
+        },
+    },
+
     compatibilityDate: '2024-09-21',
 });

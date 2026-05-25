@@ -28,7 +28,12 @@ export interface PmsAssessmentCompetency {
 export interface PmsAssessment {
     id: number;
     name: string;
-    /** Document classification */
+    /**
+     * Document classification.
+     * @deprecated `'annual_self'` was soft-consolidated into `'annual_supervisor'`
+     * on 2026-05-22 — the send page now lets admin pick any of self / manager /
+     * executive / ceo as raters per-send. Kept in the union to read legacy rows.
+     */
     type: 'annual_supervisor' | 'competency_360' | 'annual_self';
     year_id: number;
     cycle_id: number;
@@ -84,6 +89,7 @@ export interface PmsAssessmentListParams {
 
 export interface PmsAssessmentSaveBody {
     name?: string;
+    /** @deprecated `'annual_self'` — write `'annual_supervisor'` instead (see PmsAssessment.type doc). */
     type?: 'annual_supervisor' | 'competency_360' | 'annual_self';
     year_id?: number;
     cycle_id?: number;

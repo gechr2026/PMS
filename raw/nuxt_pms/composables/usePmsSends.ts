@@ -1,6 +1,8 @@
 // =============================================================
 // usePmsSends — typed wrapper for /functions/v1/pms-sends
-// (junction: assessment ↔ employee + status workflow)
+// =============================================================
+// Schema migrated 2026-05-22: pms_assessment_sends.assessment_id removed.
+// A send is now (employee × cycle). The assessment(s) live on each rater row.
 // =============================================================
 import type { ItemResponse, ListResponse } from './usePmsApi';
 
@@ -12,9 +14,16 @@ export type PmsSendStatus =
     | 'completed'
     | 'cancelled';
 
+/** Sub-array entry — one per distinct assessment referenced by the send's raters */
+export interface PmsSendAssessment {
+    id: number;
+    name: string | null;
+    type: 'annual_supervisor' | 'competency_360' | 'annual_self' | null;
+}
+
 export interface PmsSend {
     id: number;
-    assessment_id: number;
+    cycle_id: number;
     employee_id: number;
     status: PmsSendStatus;
     sent_at: string | null;
@@ -22,20 +31,18 @@ export interface PmsSend {
     completed_at: string | null;
     note: string | null;
     is_active: boolean;
+    position_id_snapshot: number | null;
+    level_id_snapshot: number | null;
+    team_id_snapshot: number | null;
+    department_id_snapshot: number | null;
     created_at: string;
     updated_at: string;
-    /** Joined display fields (assessment side) */
-    assessment_name: string | null;
-    year: number | null;
+    /** Joined display fields (cycle side) */
     cycle_label: string | null;
     cycle_start_date: string | null;
     cycle_end_date: string | null;
-    assessment_position_name: string | null;
-    assessment_team_id: number | null;
-    assessment_team_name: string | null;
-    assessment_department_id: number | null;
-    assessment_department_name: string | null;
-    assessment_level_name: string | null;
+    year_id: number | null;
+    year: number | null;
     /** Joined display fields (employee side) */
     emp_code: string | null;
     full_name: string | null;
@@ -46,43 +53,46 @@ export interface PmsSend {
     employee_department_id: number | null;
     employee_department_name: string | null;
     employee_level_name: string | null;
+    /** Assessments referenced by this send's raters (distinct, may be empty if no raters yet) */
+    assessments: PmsSendAssessment[];
+    assessment_count: number;
+    primary_assessment_name: string | null;
+    primary_assessment_type: PmsSendAssessment['type'];
 }
 
+export type PmsEvaluatorRole = 'self' | 'manager' | 'executive' | 'ceo' | 'peer' | 'subordinate';
+
 export interface PmsSendListParams {
-    assessment_id?: number;
+    cycle_id?: number;
     employee_id?: number;
     status?: PmsSendStatus;
     is_active?: boolean;
     year_id?: number;
-    cycle_id?: number;
     /** Numeric year value (e.g. 2569) */
     year?: number | string;
     /** Cycle label (e.g. "1/2569") */
     cycle?: string;
-    department_id?: number;
-    dept?: string;
-    team_id?: number;
-    team?: string;
     position_id?: number;
-    position?: string;
     level_id?: number;
-    level?: string;
     emp_code?: string;
     full_name?: string;
-    assessment_name?: string;
+    /** Restrict list to sends where the current user is a rater. Use with evaluator_role. */
+    as_rater?: 'me';
+    /** Combine with as_rater='me' to scope to a specific evaluator role. */
+    evaluator_role?: PmsEvaluatorRole;
     limit?: number;
     offset?: number;
 }
 
 export interface PmsSendCreateBody {
-    assessment_id: number;
+    cycle_id: number;
     employee_id: number;
     note?: string | null;
     status?: PmsSendStatus;
 }
 
 export interface PmsSendBulkByEmployeeIdsBody {
-    assessment_id: number;
+    cycle_id: number;
     employee_ids: number[];
     note?: string | null;
     status?: PmsSendStatus;
@@ -95,7 +105,7 @@ export interface PmsSendBulkResponse {
 }
 
 export interface PmsSendUpdateBody {
-    assessment_id?: number;
+    cycle_id?: number;
     employee_id?: number;
     status?: PmsSendStatus;
     sent_at?: string | null;
@@ -117,7 +127,7 @@ export const usePmsSends = () => {
     const create = (body: PmsSendCreateBody) =>
         request<ItemResponse<PmsSend>>('/pms-sends', { method: 'POST', body });
 
-    /** Bulk fan-out: same assessment → multiple employees */
+    /** Bulk fan-out: same cycle → multiple employees */
     const bulkByEmployees = (body: PmsSendBulkByEmployeeIdsBody) =>
         request<PmsSendBulkResponse>('/pms-sends', { method: 'POST', body });
 
@@ -125,7 +135,7 @@ export const usePmsSends = () => {
         request<ItemResponse<PmsSend>>(`/pms-sends/${id}`, { method: 'PATCH', body });
 
     const remove = (id: number) =>
-        request<{ success: true; data: { id: number; assessment_id: number; employee_id: number } }>(
+        request<{ success: true; data: { id: number; cycle_id: number; employee_id: number } }>(
             `/pms-sends/${id}`,
             { method: 'DELETE' }
         );

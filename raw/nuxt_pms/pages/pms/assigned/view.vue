@@ -164,7 +164,6 @@
                             <th class="w-20 px-3 py-3 text-center font-semibold text-gray-700">เป้าหมาย</th>
                             <th v-for="n in 5" :key="n" class="w-20 px-2 py-3 text-center font-semibold text-gray-700">{{ n }}</th>
                             <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">ไม่สามารถ<br>ประเมินได้</th>
-                            <th v-if="isManager || isExecutive" class="w-20 px-2 py-3 text-center font-semibold text-gray-700 text-xs" title="ยกเว้นข้อนี้ไม่นับใน total score (admin override)">ยกเว้น</th>
                             <th v-if="isExecutive" class="w-16 px-2 py-3 text-center font-semibold text-gray-700">คะแนน</th>
                         </tr>
                     </thead>
@@ -197,30 +196,10 @@
                                     class="h-4 w-4 cursor-pointer accent-blue-600"
                                 />
                             </td>
-                            <td v-if="isManager || isExecutive" class="px-2 py-3 text-center">
-                                <button
-                                    type="button"
-                                    class="inline-flex h-7 w-7 items-center justify-center rounded-full border transition"
-                                    :class="kpi.closed ? 'border-red-300 bg-red-50 text-red-500' : 'border-gray-300 bg-white text-gray-400 hover:bg-gray-50'"
-                                    @click="kpi.closed = !kpi.closed"
-                                    :title="kpi.closed ? 'ยกเว้นจากการคำนวณ — คลิกเพื่อนำกลับมาประเมิน' : 'นับในคะแนนรวม — คลิกเพื่อยกเว้น'"
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle v-if="!kpi.closed" cx="12" cy="12" r="8" stroke-linecap="round"/>
-                                        <g v-else>
-                                            <circle cx="12" cy="12" r="9" stroke-linecap="round"/>
-                                            <path d="M6 6l12 12" stroke-linecap="round"/>
-                                        </g>
-                                    </svg>
-                                </button>
-                            </td>
                             <td v-if="isExecutive" class="px-2 py-3 text-center font-semibold text-gray-700">{{ kpi.managerScore }}</td>
                         </tr>
                     </tbody>
                 </table>
-                <p v-if="isManager || isExecutive" class="px-5 pb-3 pt-1 text-xs text-gray-500">
-                    💡 คอลัมน์ <b>ยกเว้น</b> ใช้สำหรับ manager/executive เพื่อระบุว่า KPI ข้อนี้ <b>ไม่นำมานับใน total score</b> เช่น พนักงานลาคลอดทั้งรอบ ทำ KPI นี้ไม่ทัน
-                </p>
             </div>
         </div>
 
@@ -252,7 +231,6 @@
                             <th class="w-16 px-3 py-3 text-center font-semibold text-gray-700">เป้าหมาย</th>
                             <th v-for="n in 5" :key="n" class="px-3 py-3 text-center font-semibold text-gray-700 min-w-[130px]">ระดับ {{ n }}</th>
                             <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">ไม่สามารถ<br>ประเมินได้</th>
-                            <th v-if="isManager || isExecutive" class="w-20 px-2 py-3 text-center font-semibold text-gray-700 text-xs" title="ยกเว้นข้อนี้ไม่นับใน total score (admin override)">ยกเว้น</th>
                             <th v-if="isExecutive" class="w-16 px-2 py-3 text-center font-semibold text-gray-700">คะแนน</th>
                         </tr>
                     </thead>
@@ -286,30 +264,10 @@
                                     class="h-4 w-4 cursor-pointer accent-blue-600"
                                 />
                             </td>
-                            <td v-if="isManager || isExecutive" class="px-2 py-4 text-center align-top">
-                                <button
-                                    type="button"
-                                    class="inline-flex h-7 w-7 items-center justify-center rounded-full border transition"
-                                    :class="comp.closed ? 'border-red-300 bg-red-50 text-red-500' : 'border-gray-300 bg-white text-gray-400 hover:bg-gray-50'"
-                                    @click="comp.closed = !comp.closed"
-                                    :title="comp.closed ? 'ยกเว้นจากการคำนวณ — คลิกเพื่อนำกลับมาประเมิน' : 'นับในคะแนนรวม — คลิกเพื่อยกเว้น'"
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle v-if="!comp.closed" cx="12" cy="12" r="8" stroke-linecap="round"/>
-                                        <g v-else>
-                                            <circle cx="12" cy="12" r="9" stroke-linecap="round"/>
-                                            <path d="M6 6l12 12" stroke-linecap="round"/>
-                                        </g>
-                                    </svg>
-                                </button>
-                            </td>
                             <td v-if="isExecutive" class="px-2 py-4 text-center font-semibold text-gray-700 align-top">{{ comp.managerScore }}</td>
                         </tr>
                     </tbody>
                 </table>
-                <p v-if="isManager || isExecutive" class="px-5 pb-3 pt-1 text-xs text-gray-500">
-                    💡 คอลัมน์ <b>ยกเว้น</b> ใช้สำหรับ manager/executive เพื่อระบุว่า Competency ข้อนี้ <b>ไม่นำมานับใน total score</b> เช่น ข้อที่ไม่เหมาะกับ position ปัจจุบัน
-                </p>
             </div>
         </div>
 
@@ -383,7 +341,7 @@
                 type="button"
                 class="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                 style="background:#16a34a;"
-                :disabled="busy || isApproved"
+                :disabled="busy || isSent"
                 @click="handleSubmit"
             >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -395,7 +353,7 @@
                 type="button"
                 class="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                 style="background:#4361ee;"
-                :disabled="busy || isApproved"
+                :disabled="busy || isSent"
                 @click="handleSaveDraft"
             >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -404,19 +362,21 @@
                 </svg>
                 บันทึกร่าง
             </button>
+            <!-- Admin-only: revert a sent evaluation back to draft so the owner can re-edit -->
             <button
-                v-if="isExecutive && myEvalId !== null && !isApproved"
+                v-if="profile?.role === 'admin' && myEvalId !== null && isSent"
                 type="button"
                 class="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-                style="background:#a855f7;"
+                style="background:#f59e0b;"
                 :disabled="busy"
-                @click="handleApprove"
+                @click="handleRevert"
+                title="ปลดล็อกแบบประเมินที่ส่งแล้ว ให้ผู้ประเมินกลับมาแก้ไขได้"
             >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke-linecap="round" stroke-linejoin="round"/>
-                    <polyline points="22 4 12 14.01 9 11.01" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M3 3v5h5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
-                อนุมัติผลการประเมิน
+                ปลดล็อกเป็นร่าง
             </button>
             <button
                 type="button"
@@ -459,6 +419,7 @@ const route  = useRoute();
 const sendsApi       = usePmsSends();
 const assessmentsApi = usePmsAssessments();
 const evaluationsApi = usePmsEvaluations();
+const calculationApi = usePmsCalculation();
 const { profile }    = useAuth();
 
 // ── Param parsing ───────────────────────────────────────────────────────
@@ -522,8 +483,11 @@ const competencyRows = ref<CompetencyRow[]>([]);
 
 // ── Evaluations cache ───────────────────────────────────────────────────
 const allEvaluations = ref<PmsEvaluation[]>([]);
+/** The assessment this page is currently viewing (set by loadAll from URL or fallback) */
+const activeAssessmentId = ref<number | null>(null);
 const myEvalId       = ref<number | null>(null);
-const isApproved     = ref(false);
+/** True when this evaluation is in 'sent' state — locked for non-admin editing. */
+const isSent         = ref(false);
 const managerRecommend = ref<number | null>(null);
 const executiveVerdict = ref<number | null>(null);
 
@@ -552,14 +516,21 @@ const toastMessage = ref('');
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 function getEvalByRole(role: PmsEvaluationRole): PmsEvaluation | undefined {
-    return allEvaluations.value.find(e => e.evaluator_role === role);
+    // Scope to the active assessment, since a send can have multiple assessments
+    // and the same role can appear under each.
+    return allEvaluations.value.find(e =>
+        e.evaluator_role === role &&
+        (activeAssessmentId.value === null || e.assessment_id === activeAssessmentId.value)
+    );
 }
 
 function statusLabel(status: string): string {
-    if (status === 'completed' || status === 'approved') return 'ประเมินเสร็จสิ้นแล้ว';
-    if (status === 'submitted') return 'ส่งแบบประเมินแล้ว';
-    if (status === 'in_progress' || status === 'opened' || status === 'draft') return 'อยู่ระหว่างการประเมิน';
-    if (status === 'sent') return 'รอการประเมิน';
+    // Active evaluation lifecycle (2026-05-22): 'draft' | 'sent'.
+    // Send-level statuses (pms_assessment_sends) may still surface here.
+    if (status === 'sent' || status === 'completed' || status === 'approved' || status === 'submitted')
+        return 'ส่งแบบประเมินแล้ว';
+    if (status === 'in_progress' || status === 'opened' || status === 'draft')
+        return 'อยู่ระหว่างการประเมิน';
     return 'ยังไม่เข้าทำแบบประเมิน';
 }
 
@@ -573,13 +544,13 @@ function applyMyEvaluationToRows() {
 
     if (!myEval) {
         myEvalId.value = null;
-        isApproved.value = false;
+        isSent.value = false;
         kpiScore.value = '0.00'; competencyScore.value = '0.00'; totalScore.value = '0.00';
         return;
     }
 
-    myEvalId.value   = myEval.id;
-    isApproved.value = myEval.status === 'approved';
+    myEvalId.value = myEval.id;
+    isSent.value   = myEval.status === 'sent';
 
     const kpiMap = new Map<number, { selected_option: number | null; is_closed: boolean }>();
     for (const s of myEval.kpi_scores ?? []) {
@@ -659,7 +630,24 @@ async function loadAll() {
         const sendRes = await sendsApi.get(sendId.value);
         const s = sendRes.data;
 
-        assessment.name   = s.assessment_name ?? '';
+        // After 2026-05-22 schema change: a send carries cycle info only.
+        // The specific assessment for this view comes from the URL query param.
+        // Fallback to the send's primary assessment for old single-assessment sends.
+        const queryAssessmentId = (() => {
+            const q = route.query.assessment_id;
+            if (typeof q === 'string') {
+                const n = parseInt(q, 10);
+                if (Number.isInteger(n)) return n;
+            }
+            return null;
+        })();
+        const targetAssessmentId = queryAssessmentId ?? s.assessments[0]?.id ?? null;
+        if (!targetAssessmentId) {
+            throw new Error('ไม่พบ assessment สำหรับ send นี้ — กรุณากลับไปที่หน้ารายการแล้วเลือกใหม่');
+        }
+        activeAssessmentId.value = targetAssessmentId;
+
+        assessment.name   = s.assessments.find(a => a.id === targetAssessmentId)?.name ?? s.primary_assessment_name ?? '';
         assessment.year   = s.year != null ? String(s.year) : '';
         assessment.cycle  = s.cycle_label ?? '';
         assessment.status = statusLabel(s.status);
@@ -671,7 +659,7 @@ async function loadAll() {
         employee.team     = s.employee_team_name ?? '';
         employee.dept     = s.employee_department_name ?? '';
 
-        const aRes = await assessmentsApi.get(s.assessment_id);
+        const aRes = await assessmentsApi.get(targetAssessmentId);
         const a = aRes.data;
 
         kpiRows.value = (a.kpis ?? []).map(k => ({
@@ -709,7 +697,7 @@ async function loadAll() {
 }
 
 // ── Build payload + save ────────────────────────────────────────────────
-function buildPayload(status: 'draft' | 'submitted') {
+function buildPayload(status: 'draft' | 'sent') {
     const recommendation = isManager.value
         ? (managerRecommend.value ?? null)
         : isExecutive.value
@@ -719,6 +707,7 @@ function buildPayload(status: 'draft' | 'submitted') {
     return {
         send_id: sendId.value!,
         evaluator_role: evaluatorRole.value,
+        assessment_id: activeAssessmentId.value!,
         status,
         recommendation,
         kpi_scores: kpiRows.value.map(r => ({
@@ -734,7 +723,7 @@ function buildPayload(status: 'draft' | 'submitted') {
     };
 }
 
-async function saveAndReload(status: 'draft' | 'submitted') {
+async function saveAndReload(status: 'draft' | 'sent') {
     busy.value = true;
     serverError.value = '';
     try {
@@ -745,40 +734,52 @@ async function saveAndReload(status: 'draft' | 'submitted') {
             await evaluationsApi.create(payload as Parameters<typeof evaluationsApi.create>[0]);
         }
         await loadAll();
-        toastMessage.value = status === 'submitted' ? 'ส่งแบบประเมินสำเร็จ' : 'บันทึกร่างสำเร็จ';
+
+        // Snapshot the computed averages each time an evaluation saves.
+        // Non-blocking: a failed snapshot must not block the save toast.
+        if (sendId.value !== null && activeAssessmentId.value !== null) {
+            calculationApi.snapshot({
+                send_id: sendId.value,
+                assessment_id: activeAssessmentId.value,
+                evaluation_id: myEvalId.value,
+                trigger: status,
+            }).catch(e => console.warn('[view] snapshot calc failed', e));
+        }
+
+        toastMessage.value = status === 'sent' ? 'ส่งแบบประเมินสำเร็จ' : 'บันทึกร่างสำเร็จ';
         showToast.value = true;
         setTimeout(() => {
             showToast.value = false;
-            if (status === 'submitted') router.push('/pms/assigned');
+            if (status === 'sent') router.push('/pms/assigned');
         }, 1500);
     } catch (e) {
         const err = e as PmsApiError;
-        if (err.status === 403) serverError.value = `ไม่มีสิทธิ์ ${status === 'submitted' ? 'ส่ง' : 'บันทึก'}แบบประเมิน (ตรวจสอบ role)`;
+        if (err.status === 403) serverError.value = `ไม่มีสิทธิ์ ${status === 'sent' ? 'ส่ง' : 'บันทึก'}แบบประเมิน (ตรวจสอบ role)`;
         else                     serverError.value = err.message || 'บันทึกไม่สำเร็จ';
     } finally {
         busy.value = false;
     }
 }
 
-const handleSubmit    = () => saveAndReload('submitted');
+const handleSubmit    = () => saveAndReload('sent');
 const handleSaveDraft = () => saveAndReload('draft');
 
-const handleApprove = async () => {
+// Admin-only: flip a sent evaluation back to draft so its owner can re-edit.
+const handleRevert = async () => {
     if (myEvalId.value === null) return;
+    if (!confirm('ปลดล็อกแบบประเมินนี้ให้กลับเป็นร่าง? ผู้ประเมินจะสามารถแก้ไขได้อีกครั้ง')) return;
     busy.value = true;
     serverError.value = '';
     try {
-        await evaluationsApi.approve(myEvalId.value);
+        await evaluationsApi.revert(myEvalId.value);
         await loadAll();
-        toastMessage.value = 'อนุมัติผลสำเร็จ';
+        toastMessage.value = 'ปลดล็อกเป็นร่างสำเร็จ';
         showToast.value = true;
-        setTimeout(() => {
-            showToast.value = false;
-            router.push('/pms/assigned');
-        }, 1500);
+        setTimeout(() => { showToast.value = false; }, 1500);
     } catch (e) {
         const err = e as PmsApiError;
-        serverError.value = err.message || 'อนุมัติไม่สำเร็จ';
+        if (err.status === 403) serverError.value = 'เฉพาะ admin เท่านั้นที่ปลดล็อกได้';
+        else                     serverError.value = err.message || 'ปลดล็อกไม่สำเร็จ';
     } finally {
         busy.value = false;
     }

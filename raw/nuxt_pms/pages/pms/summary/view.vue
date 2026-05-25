@@ -88,22 +88,25 @@
                 </div>
             </div>
 
-            <!-- Score Boxes -->
+            <!-- Score Boxes — คำนวณจาก เฉลี่ย(ไม่รวมตนเอง) × น้ำหนัก ตามแบบประเมิน -->
             <div class="mb-4 grid grid-cols-3 gap-4">
                 <div class="rounded-xl p-4 text-white" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">
-                    <p class="text-xs font-semibold opacity-90">คะแนนการประเมิน KPI</p>
-                    <p class="mt-1 text-2xl font-bold">{{ formatScore(data.summary.avg_kpi_score) }}</p>
+                    <p class="text-xs font-semibold opacity-90">คะแนน KPI (× {{ kpiHeaderRatio }}%)</p>
+                    <p class="mt-1 text-2xl font-bold">{{ formatScore(kpiSubtotal) }}</p>
+                    <p class="mt-0.5 text-xs opacity-80">→ {{ formatScore(kpiSubtotal * kpiHeaderRatio / 100) }}</p>
                 </div>
                 <div class="rounded-xl p-4 text-white" style="background:linear-gradient(135deg,#3b82f6,#60a5fa);">
-                    <p class="text-xs font-semibold opacity-90">คะแนนการประเมิน Competency</p>
-                    <p class="mt-1 text-2xl font-bold">{{ formatScore(data.summary.avg_competency_score) }}</p>
+                    <p class="text-xs font-semibold opacity-90">คะแนน Competency (× {{ competencyHeaderRatio }}%)</p>
+                    <p class="mt-1 text-2xl font-bold">{{ formatScore(competencySubtotal) }}</p>
+                    <p class="mt-0.5 text-xs opacity-80">→ {{ formatScore(competencySubtotal * competencyHeaderRatio / 100) }}</p>
                 </div>
                 <div class="rounded-xl p-4 text-white" style="background:linear-gradient(135deg,#10b981,#34d399);">
                     <p class="text-xs font-semibold opacity-90">ผลการประเมินรวม</p>
                     <p class="mt-1 text-2xl font-bold">
-                        {{ formatScore(data.summary.avg_total_score) }}
+                        {{ formatScore(finalScore) }}
                         <span v-if="data.summary.final_grade" class="text-base font-semibold opacity-80">({{ data.summary.final_grade }})</span>
                     </p>
+                    <p class="mt-0.5 text-xs opacity-80">KPI + Competency (ถ่วงน้ำหนัก)</p>
                 </div>
             </div>
 
@@ -173,7 +176,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="pr in data.per_role" :key="pr.evaluator_role" class="border-b border-gray-100 transition hover:bg-gray-50">
+                            <tr v-for="pr in perRoleStats" :key="pr.evaluator_role" class="border-b border-gray-100 transition hover:bg-gray-50">
                                 <td class="px-4 py-2.5 font-medium text-gray-800">{{ perRoleLabel(pr.evaluator_role) }}</td>
                                 <td class="px-4 py-2.5 text-center text-gray-600">{{ pr.rater_count }}</td>
                                 <td class="px-4 py-2.5 text-center" :class="pr.submitted_count === pr.rater_count ? 'text-green-600 font-semibold' : 'text-gray-600'">{{ pr.submitted_count }}/{{ pr.rater_count }}</td>
@@ -207,12 +210,14 @@
                                     class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700 whitespace-pre-line"
                                     :title="rater.evaluator_full_name ?? ''"
                                 >{{ raterLabel(rater) }}</th>
-                                <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700">เฉลี่ย</th>
+                                <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700" title="ค่าเฉลี่ยเฉพาะหัวหน้า + ผู้บริหาร (ไม่รวมตนเอง)">เฉลี่ย</th>
+                                <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700">น้ำหนัก</th>
+                                <th class="w-24 px-3 py-2.5 text-center font-semibold text-gray-700" title="เฉลี่ย × น้ำหนัก">คะแนนที่ได้</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="data.kpis.length === 0">
-                                <td :colspan="raterColumns.length + 4" class="px-4 py-6 text-center text-sm text-gray-400">ไม่มีข้อมูล KPI</td>
+                                <td :colspan="raterColumns.length + 6" class="px-4 py-6 text-center text-sm text-gray-400">ไม่มีข้อมูล KPI</td>
                             </tr>
                             <tr v-for="(kpi, idx) in data.kpis" :key="kpi.id" class="border-b border-gray-100 transition hover:bg-gray-50">
                                 <td class="px-4 py-3 text-center text-gray-600">{{ idx + 1 }}</td>
@@ -221,9 +226,18 @@
                                 <td v-for="rater in raterColumns" :key="`${rater.evaluator_role}:${rater.evaluator_employee_id ?? ''}`" class="px-3 py-3 text-center text-gray-700">
                                     {{ ratingFor(kpi.by_rater, rater.evaluator_role, rater.evaluator_employee_id) }}
                                 </td>
-                                <td class="px-3 py-3 text-center font-semibold text-gray-800">{{ formatScore(kpi.avg_score) }}</td>
+                                <td class="px-3 py-3 text-center font-semibold text-gray-800">{{ formatScore(itemAvgExclSelf(kpi)) }}</td>
+                                <td class="px-3 py-3 text-center text-gray-700">{{ Number(kpi.weight ?? 0).toFixed(2) }}</td>
+                                <td class="px-3 py-3 text-center font-semibold text-blue-700">{{ formatScore(itemEarnedScore(kpi)) }}</td>
                             </tr>
                         </tbody>
+                        <tfoot v-if="data.kpis.length > 0">
+                            <tr class="border-t-2 border-gray-300 bg-gray-50">
+                                <td :colspan="raterColumns.length + 4" class="px-4 py-3 text-right font-bold text-gray-700">รวมคะแนน KPI</td>
+                                <td class="px-3 py-3 text-center font-bold text-gray-700">{{ kpiTotalWeight.toFixed(2) }}</td>
+                                <td class="px-3 py-3 text-center font-bold text-blue-700">{{ formatScore(kpiSubtotal) }}</td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -254,12 +268,14 @@
                                     class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700 whitespace-pre-line"
                                     :title="rater.evaluator_full_name ?? ''"
                                 >{{ raterLabel(rater) }}</th>
-                                <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700">เฉลี่ย</th>
+                                <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700" title="ค่าเฉลี่ยเฉพาะหัวหน้า + ผู้บริหาร (ไม่รวมตนเอง)">เฉลี่ย</th>
+                                <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700">น้ำหนัก</th>
+                                <th class="w-24 px-3 py-2.5 text-center font-semibold text-gray-700" title="เฉลี่ย × น้ำหนัก">คะแนนที่ได้</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="data.competencies.length === 0">
-                                <td :colspan="raterColumns.length + 3" class="px-4 py-6 text-center text-sm text-gray-400">ไม่มีข้อมูล Competency</td>
+                                <td :colspan="raterColumns.length + 5" class="px-4 py-6 text-center text-sm text-gray-400">ไม่มีข้อมูล Competency</td>
                             </tr>
                             <tr v-for="(comp, idx) in data.competencies" :key="comp.id" class="border-b border-gray-100 transition hover:bg-gray-50">
                                 <td class="px-4 py-3 text-center text-gray-600">{{ idx + 1 }}</td>
@@ -267,9 +283,18 @@
                                 <td v-for="rater in raterColumns" :key="`${rater.evaluator_role}:${rater.evaluator_employee_id ?? ''}`" class="px-3 py-3 text-center text-gray-700">
                                     {{ ratingFor(comp.by_rater, rater.evaluator_role, rater.evaluator_employee_id) }}
                                 </td>
-                                <td class="px-3 py-3 text-center font-semibold text-gray-800">{{ formatScore(comp.avg_score) }}</td>
+                                <td class="px-3 py-3 text-center font-semibold text-gray-800">{{ formatScore(itemAvgExclSelf(comp)) }}</td>
+                                <td class="px-3 py-3 text-center text-gray-700">{{ Number(comp.weight ?? 0).toFixed(2) }}</td>
+                                <td class="px-3 py-3 text-center font-semibold text-blue-700">{{ formatScore(itemEarnedScore(comp)) }}</td>
                             </tr>
                         </tbody>
+                        <tfoot v-if="data.competencies.length > 0">
+                            <tr class="border-t-2 border-gray-300 bg-gray-50">
+                                <td :colspan="raterColumns.length + 3" class="px-4 py-3 text-right font-bold text-gray-700">รวมคะแนน Competency</td>
+                                <td class="px-3 py-3 text-center font-bold text-gray-700">{{ competencyTotalWeight.toFixed(2) }}</td>
+                                <td class="px-3 py-3 text-center font-bold text-blue-700">{{ formatScore(competencySubtotal) }}</td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -401,6 +426,105 @@ const formatScore = (n: number | null | undefined): string => {
     if (n === null || n === undefined) return '—';
     return Number(n).toFixed(2);
 };
+
+// ── Per-item "เฉลี่ย" excluding self + closed + N/A ──────────────────
+// Uses raw selected_option (1..5), NOT the percent-converted `score`.
+// Returns null when no rater contributed; UI shows '—' in that case.
+const itemAvgExclSelf = (item: { by_rater: PmsSummaryRater[] }): number | null => {
+    const counted = item.by_rater.filter(r =>
+        r.evaluator_role !== 'self'
+        && !r.is_closed
+        && r.selected_option !== null
+        && r.selected_option !== 0
+    );
+    if (counted.length === 0) return null;
+    const sum = counted.reduce((s, r) => s + Number(r.selected_option), 0);
+    return sum / counted.length;
+};
+
+// คะแนนที่ได้ ต่อข้อ = avg(เฉพาะ non-self) × น้ำหนัก
+const itemEarnedScore = (item: PmsSummaryItem): number | null => {
+    const avg = itemAvgExclSelf(item);
+    if (avg === null) return null;
+    return avg * Number(item.weight ?? 0);
+};
+
+// Σ คะแนนที่ได้ ของทั้ง KPI / Competency (already weighted by item.weight)
+const kpiSubtotal = computed<number>(() => {
+    if (!data.value) return 0;
+    return data.value.kpis.reduce((s, k) => s + (itemEarnedScore(k) ?? 0), 0);
+});
+const competencySubtotal = computed<number>(() => {
+    if (!data.value) return 0;
+    return data.value.competencies.reduce((s, c) => s + (itemEarnedScore(c) ?? 0), 0);
+});
+
+// Σ น้ำหนัก (ใช้แสดงในแถวสรุป)
+const kpiTotalWeight = computed<number>(() =>
+    data.value ? data.value.kpis.reduce((s, k) => s + Number(k.weight ?? 0), 0) : 0);
+const competencyTotalWeight = computed<number>(() =>
+    data.value ? data.value.competencies.reduce((s, c) => s + Number(c.weight ?? 0), 0) : 0);
+
+// Assessment header ratios (e.g. 50/50)
+const kpiHeaderRatio = computed<number>(() =>
+    data.value ? Number(data.value.summary.kpi_weight ?? 0) : 0);
+const competencyHeaderRatio = computed<number>(() =>
+    data.value ? Number(data.value.summary.competency_weight ?? 0) : 0);
+
+// Final score = kpiSubtotal × kpi_weight/100 + compSubtotal × competency_weight/100
+const finalScore = computed<number>(() =>
+    kpiSubtotal.value * kpiHeaderRatio.value / 100
+    + competencySubtotal.value * competencyHeaderRatio.value / 100);
+
+// ── Per-role mean (raw selected_option 1..5, not %-converted) ────────
+// Replaces values from pms_evaluation_per_role_v (which stores weighted %).
+const meanSelectedOption = (
+    items: PmsSummaryItem[],
+    role: string,
+): number | null => {
+    const samples: number[] = [];
+    for (const it of items) {
+        for (const r of it.by_rater) {
+            if (r.evaluator_role !== role) continue;
+            if (r.is_closed) continue;
+            if (r.selected_option === null || r.selected_option === undefined) continue;
+            if (r.selected_option === 0) continue;
+            samples.push(Number(r.selected_option));
+        }
+    }
+    if (samples.length === 0) return null;
+    return samples.reduce((s, n) => s + n, 0) / samples.length;
+};
+
+interface PerRoleRow {
+    evaluator_role: string;
+    rater_count: number;
+    submitted_count: number;
+    kpi_mean: number | null;
+    competency_mean: number | null;
+    total_mean: number | null;
+}
+
+const perRoleStats = computed<PerRoleRow[]>(() => {
+    if (!data.value) return [];
+    return data.value.per_role.map(pr => {
+        const kpi  = meanSelectedOption(data.value!.kpis,         pr.evaluator_role);
+        const comp = meanSelectedOption(data.value!.competencies, pr.evaluator_role);
+        // total = simple average of available means (mirrors existing "(kpi+comp)/2" pattern)
+        let total: number | null = null;
+        if (kpi !== null && comp !== null) total = (kpi + comp) / 2;
+        else if (kpi !== null)              total = kpi;
+        else if (comp !== null)             total = comp;
+        return {
+            evaluator_role:  pr.evaluator_role,
+            rater_count:     Number(pr.rater_count ?? 0),
+            submitted_count: Number(pr.submitted_count ?? 0),
+            kpi_mean:        kpi,
+            competency_mean: comp,
+            total_mean:      total,
+        };
+    });
+});
 
 /** Get rating cell value for a specific (role + evaluator_employee_id) */
 const ratingFor = (raters: PmsSummaryRater[], role: string, empId?: number | null): string => {

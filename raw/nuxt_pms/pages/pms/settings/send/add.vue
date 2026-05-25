@@ -109,32 +109,30 @@
                         <span class="text-sm font-bold text-gray-700">ข้อมูลการประเมิน</span>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <!-- ชื่อแบบประเมิน (dropdown) -->
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <!-- รอบการประเมิน (dropdown) — replaces the old assessment picker -->
                         <div>
-                            <label class="mb-1.5 block text-sm font-semibold text-gray-700">ชื่อแบบประเมิน <span class="text-red-500">*</span></label>
+                            <label class="mb-1.5 block text-sm font-semibold text-gray-700">รอบการประเมิน <span class="text-red-500">*</span></label>
                             <select
-                                v-model="form.assessment_id"
+                                v-model="form.cycle_id"
                                 class="w-full rounded-lg border px-3 py-2 text-sm text-gray-700 outline-none transition"
-                                :class="errors.assessmentId ? 'border-red-400' : 'border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'"
-                                @change="onAssessmentChange"
+                                :class="errors.cycleId ? 'border-red-400' : 'border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'"
+                                @change="onCycleChange"
                             >
-                                <option value="">เลือก</option>
-                                <option v-for="a in assessmentOptions" :key="a.id" :value="a.id">{{ a.name }}</option>
+                                <option :value="null">เลือก</option>
+                                <option v-for="c in cycleOptions" :key="c.id" :value="c.id">{{ c.cycle_label }}</option>
                             </select>
-                            <p v-if="errors.assessmentId" class="mt-1 text-xs text-red-500">{{ errors.assessmentId }}</p>
+                            <p v-if="errors.cycleId" class="mt-1 text-xs text-red-500">{{ errors.cycleId }}</p>
                         </div>
-                        <!-- รอบปีการประเมิน (auto) -->
+                        <!-- รอบปีการประเมิน (auto from cycle) -->
                         <div>
                             <label class="mb-1.5 block text-sm font-semibold text-gray-700">รอบปีการประเมิน</label>
-                            <input :value="assessmentInfo.year" type="text" readonly class="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600 outline-none cursor-not-allowed" />
-                        </div>
-                        <!-- รอบการประเมิน (auto) -->
-                        <div>
-                            <label class="mb-1.5 block text-sm font-semibold text-gray-700">รอบการประเมิน</label>
-                            <input :value="assessmentInfo.cycle" type="text" readonly class="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600 outline-none cursor-not-allowed" />
+                            <input :value="cycleInfo.year" type="text" readonly class="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600 outline-none cursor-not-allowed" />
                         </div>
                     </div>
+                    <p class="mt-2 text-xs text-gray-500">
+                        💡 เลือกแบบประเมินรายผู้ประเมินด้านล่าง — คนหนึ่งอาจใช้ "ประจำปี" (KPI+Competency), อีกคนใช้ "Competency 360°" ในรอบเดียวกันได้
+                    </p>
                 </div>
 
                 <!-- Note (kept open between sections) -->
@@ -158,17 +156,18 @@
                         </svg>
                         <span class="text-sm font-bold text-gray-700">รายชื่อผู้ประเมิน (raters)</span>
                     </div>
-                    <p v-if="assessmentInfo.typeHint" class="mb-3 text-xs text-blue-600">{{ assessmentInfo.typeHint }}</p>
-
-                    <div class="overflow-x-auto rounded-xl border border-gray-200">
+                    <!-- overflow-visible (not overflow-x-auto) so the employee suggestion
+                         dropdown inside each row can extend past the table bottom. -->
+                    <div class="overflow-visible rounded-xl border border-gray-200">
                         <table class="w-full text-sm">
                             <thead>
                                 <tr class="border-b border-gray-200 bg-gray-50">
-                                    <th class="w-14 px-4 py-3 text-center font-semibold text-gray-700">ลำดับ</th>
-                                    <th class="w-32 px-4 py-3 text-center font-semibold text-gray-700">บทบาท</th>
-                                    <th class="px-4 py-3 text-center font-semibold text-gray-700">ชื่อ-นามสกุล</th>
-                                    <th class="w-44 px-4 py-3 text-center font-semibold text-gray-700">ตำแหน่ง</th>
-                                    <th class="w-32 px-4 py-3 text-center font-semibold text-gray-700">ระดับตำแหน่ง</th>
+                                    <th class="w-12 px-3 py-3 text-center font-semibold text-gray-700">ลำดับ</th>
+                                    <th class="w-32 px-3 py-3 text-center font-semibold text-gray-700">บทบาท</th>
+                                    <th class="w-56 px-3 py-3 text-center font-semibold text-gray-700">ชื่อแบบประเมิน</th>
+                                    <th class="px-3 py-3 text-center font-semibold text-gray-700">ชื่อ-นามสกุล</th>
+                                    <th class="w-40 px-3 py-3 text-center font-semibold text-gray-700">ตำแหน่ง</th>
+                                    <th class="w-28 px-3 py-3 text-center font-semibold text-gray-700">ระดับตำแหน่ง</th>
                                     <th class="w-10 px-2 py-3"></th>
                                 </tr>
                             </thead>
@@ -178,13 +177,24 @@
                                     :key="idx"
                                     class="border-b border-gray-100"
                                 >
-                                    <td class="px-4 py-2 text-center text-gray-500 font-medium">{{ idx + 1 }}</td>
+                                    <td class="px-3 py-2 text-center text-gray-500 font-medium">{{ idx + 1 }}</td>
                                     <td class="px-2 py-2">
                                         <select
                                             v-model="evaluator.evaluator_role"
                                             class="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-gray-700 outline-none focus:border-blue-400 transition"
                                         >
-                                            <option v-for="r in availableRoles" :key="r.value" :value="r.value">{{ r.label }}</option>
+                                            <option v-for="r in ALL_ROLES" :key="r.value" :value="r.value">{{ r.label }}</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-2 py-2">
+                                        <select
+                                            v-model="evaluator.assessment_id"
+                                            class="w-full rounded-lg border px-2 py-1.5 text-sm text-gray-700 outline-none focus:border-blue-400 transition"
+                                            :class="evaluator.assessment_id === null && evaluator.search ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200'"
+                                            :disabled="form.cycle_id === null"
+                                        >
+                                            <option :value="null">— เลือกแบบประเมิน —</option>
+                                            <option v-for="a in assessmentOptions" :key="a.id" :value="a.id">{{ a.name }}</option>
                                         </select>
                                     </td>
                                     <td class="px-2 py-2">
@@ -222,7 +232,7 @@
                                     </td>
                                 </tr>
                                 <tr v-if="evaluatorRows.length === 0">
-                                    <td colspan="6" class="px-4 py-6 text-center text-sm text-gray-400">ยังไม่มีผู้ประเมิน — กดปุ่ม "เพิ่มแถว" หรือ "เติมตามประเภท"</td>
+                                    <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-400">ยังไม่มีผู้ประเมิน — กดปุ่ม "เพิ่มแถว" หรือ "เติม Self"</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -233,9 +243,9 @@
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
                             เพิ่มแถว
                         </button>
-                        <button type="button" class="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-100" :disabled="!form.assessment_id || !form.employee_id" @click="autoFillRolesByType">
+                        <button type="button" class="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-100" :disabled="!form.cycle_id || !form.employee_id" @click="autoFillSelfRow">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l5 5L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            เติม Self ตามประเภท
+                            เติม Self
                         </button>
                     </div>
                     <p v-if="errors.raters" class="mt-2 text-xs text-red-500">{{ errors.raters }}</p>
@@ -285,6 +295,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { PmsApiError } from '@/composables/usePmsApi';
 import type { PmsEmployee } from '@/composables/usePmsEmployees';
 import type { PmsAssessment } from '@/composables/usePmsAssessments';
+import type { PmsCycle } from '@/composables/usePmsCycles';
 import type { PmsEvaluationRole } from '@/composables/usePmsEvaluations';
 
 const router = useRouter();
@@ -292,6 +303,7 @@ const route  = useRoute();
 const sendsApi       = usePmsSends();
 const employeesApi   = usePmsEmployees();
 const assessmentsApi = usePmsAssessments();
+const cyclesApi      = usePmsCycles();
 const sendRatersApi  = usePmsSendRaters();
 
 const editId = computed(() => {
@@ -309,23 +321,29 @@ definePageMeta({ layout: 'pms-layout' });
 
 // ── Master data loaded from API ───────────────────────────────────────
 const employeeMaster   = ref<PmsEmployee[]>([]);
-const assessmentOptions = ref<PmsAssessment[]>([]);
+const allAssessments   = ref<PmsAssessment[]>([]);
+const cycleOptions     = ref<PmsCycle[]>([]);
+
+// Assessments filtered by selected cycle — what each rater can choose from.
+const assessmentOptions = computed(() =>
+    form.cycle_id === null ? [] : allAssessments.value.filter(a => a.cycle_id === form.cycle_id)
+);
 
 // ── Form state ─────────────────────────────────────────────────────────
 interface FormState {
     employee_id: number | null;
-    assessment_id: number | null;
+    cycle_id: number | null;
     note: string;
     is_active: boolean;
 }
 const form = reactive<FormState>({
     employee_id: null,
-    assessment_id: null,
+    cycle_id: null,
     note: '',
     is_active: true,
 });
 
-const errors      = reactive({ empCode: '', assessmentId: '', raters: '' });
+const errors      = reactive({ empCode: '', cycleId: '', raters: '' });
 const showToast   = ref(false);
 const submitting  = ref(false);
 const serverError = ref('');
@@ -365,18 +383,16 @@ const selectEmployee = (emp: PmsEmployee) => {
     empSuggestions.value = [];
 };
 
-// ── Assessment selection ───────────────────────────────────────────────
-const assessmentInfo = reactive({ year: '', cycle: '', type: 'annual_supervisor' as 'annual_supervisor' | 'competency_360' | 'annual_self', typeHint: '' });
+// ── Cycle selection ───────────────────────────────────────────────────
+const cycleInfo = reactive({ year: '' });
 
-const onAssessmentChange = () => {
-    const found = assessmentOptions.value.find(a => a.id === Number(form.assessment_id));
-    assessmentInfo.year  = found?.year ? String(found.year) : '';
-    assessmentInfo.cycle = found?.cycle_label ?? '';
-    assessmentInfo.type  = (found?.type ?? 'annual_supervisor') as typeof assessmentInfo.type;
-    assessmentInfo.typeHint =
-        assessmentInfo.type === 'annual_supervisor' ? 'แบบ 180° — ใส่หัวหน้างาน (Manager / Executive / CEO)' :
-        assessmentInfo.type === 'competency_360'    ? 'แบบ 360° — ใส่ self + peers + subordinates + supervisors' :
-        'แบบ Self — มีเพียงผู้ถูกประเมินประเมินตนเอง';
+const onCycleChange = () => {
+    const found = cycleOptions.value.find(c => c.id === Number(form.cycle_id));
+    cycleInfo.year = found?.year ? String(found.year) : '';
+    // When cycle changes, reset rater assessments (they belonged to old cycle)
+    for (const r of evaluatorRows.value) {
+        r.assessment_id = null;
+    }
 };
 
 // ── Rater rows (saved to pms_assessment_send_raters) ──────────────────
@@ -389,17 +405,11 @@ const ALL_ROLES: Array<{ value: PmsEvaluationRole; label: string }> = [
     { value: 'subordinate', label: 'ผู้ใต้บังคับบัญชา (Subordinate)' },
 ];
 
-/** Roles available for current assessment type */
-const availableRoles = computed(() => {
-    if (assessmentInfo.type === 'annual_self')        return ALL_ROLES.filter(r => r.value === 'self');
-    if (assessmentInfo.type === 'annual_supervisor')  return ALL_ROLES.filter(r => ['manager','executive','ceo'].includes(r.value));
-    return ALL_ROLES;   // competency_360 — all 6
-});
-
 interface EvaluatorRow {
     rater_id?: number;             // existing pms_assessment_send_raters.id (edit mode)
     evaluator_employee_id: number | null;
     evaluator_role: PmsEvaluationRole;
+    assessment_id: number | null;  // each rater picks their own assessment
     search: string;
     position: string;
     level: string;
@@ -409,6 +419,7 @@ interface EvaluatorRow {
 const makeEvaluatorRow = (role: PmsEvaluationRole = 'self'): EvaluatorRow => ({
     evaluator_employee_id: null,
     evaluator_role: role,
+    assessment_id: null,
     search: '', position: '', level: '',
     showDropdown: false, suggestions: [],
 });
@@ -435,46 +446,55 @@ const selectEvaluator = (idx: number, emp: PmsEmployee) => {
 };
 
 const addEvaluator    = () => {
-    const defaultRole = (availableRoles.value[0]?.value ?? 'self') as PmsEvaluationRole;
-    evaluatorRows.value.push(makeEvaluatorRow(defaultRole));
+    evaluatorRows.value.push(makeEvaluatorRow('self'));
 };
 const removeEvaluator = (i: number) => evaluatorRows.value.splice(i, 1);
 
-/** Auto-add a "self" row pointing to the evaluatee (handy for annual_self / competency_360) */
-const autoFillRolesByType = () => {
-    if (form.employee_id === null) return;
+/** Auto-add a "self" row pointing to the evaluatee. Picks the first
+ *  available assessment in the cycle so the row is valid out-of-the-box. */
+const autoFillSelfRow = () => {
+    if (form.employee_id === null || form.cycle_id === null) return;
     const exists = evaluatorRows.value.some(r => r.evaluator_role === 'self' && r.evaluator_employee_id === form.employee_id);
-    if (!exists) {
-        const emp = employeeMaster.value.find(e => e.id === form.employee_id);
-        if (emp) {
-            const row = makeEvaluatorRow('self');
-            row.evaluator_employee_id = emp.id;
-            row.search   = `${emp.emp_code ?? ''} - ${emp.full_name ?? ''}`;
-            row.position = emp.position_name ?? '';
-            row.level    = emp.level_name ?? '';
-            evaluatorRows.value.unshift(row);
-        }
-    }
+    if (exists) return;
+    const emp = employeeMaster.value.find(e => e.id === form.employee_id);
+    if (!emp) return;
+    const firstAssessment = assessmentOptions.value[0];
+    const row = makeEvaluatorRow('self');
+    row.evaluator_employee_id = emp.id;
+    row.assessment_id = firstAssessment?.id ?? null;
+    row.search   = `${emp.emp_code ?? ''} - ${emp.full_name ?? ''}`;
+    row.position = emp.position_name ?? '';
+    row.level    = emp.level_name ?? '';
+    evaluatorRows.value.unshift(row);
 };
 
 // ── Validate & Submit ──────────────────────────────────────────────────
 const validate = (): boolean => {
-    errors.empCode = ''; errors.assessmentId = ''; errors.raters = '';
+    errors.empCode = ''; errors.cycleId = ''; errors.raters = '';
     let valid = true;
-    if (form.employee_id === null)   { errors.empCode      = 'กรุณาเลือกผู้ถูกประเมิน'; valid = false; }
-    if (form.assessment_id === null) { errors.assessmentId = 'กรุณาเลือกแบบประเมิน';    valid = false; }
+    if (form.employee_id === null) { errors.empCode = 'กรุณาเลือกผู้ถูกประเมิน'; valid = false; }
+    if (form.cycle_id === null)    { errors.cycleId = 'กรุณาเลือกรอบการประเมิน';  valid = false; }
 
-    // Validate rater rows
+    // Each rater must have employee + assessment selected.
     const cleaned = evaluatorRows.value.filter(r => r.evaluator_employee_id !== null);
     if (cleaned.length === 0) {
         errors.raters = 'กรุณาเลือกผู้ประเมินอย่างน้อย 1 คน';
         valid = false;
     }
-    // No duplicate evaluator ids
-    const seen = new Set<number>();
+    for (let i = 0; i < evaluatorRows.value.length; i++) {
+        const r = evaluatorRows.value[i];
+        if (r.evaluator_employee_id !== null && r.assessment_id === null) {
+            errors.raters = `แถวที่ ${i + 1}: กรุณาเลือกแบบประเมินสำหรับผู้ประเมินคนนี้`;
+            valid = false;
+            break;
+        }
+    }
+    // No duplicate (employee, role, assessment) triples within the file.
+    const seen = new Set<string>();
     for (const r of cleaned) {
-        const k = r.evaluator_employee_id as number;
-        if (seen.has(k)) { errors.raters = 'มีผู้ประเมินซ้ำในรายการ'; valid = false; break; }
+        if (r.assessment_id === null) continue;
+        const k = `${r.evaluator_employee_id}|${r.evaluator_role}|${r.assessment_id}`;
+        if (seen.has(k)) { errors.raters = 'มีผู้ประเมินซ้ำ (เดียวกัน: คน × บทบาท × แบบประเมิน)'; valid = false; break; }
         seen.add(k);
     }
     return valid;
@@ -503,15 +523,15 @@ const handleSubmit = async () => {
         let sendId: number;
         if (isEditMode.value && editId.value !== null) {
             await sendsApi.update(editId.value, {
-                assessment_id: form.assessment_id as number,
-                employee_id:   form.employee_id   as number,
+                cycle_id:    form.cycle_id    as number,
+                employee_id: form.employee_id as number,
                 note,
             });
             sendId = editId.value;
         } else {
             const res = await sendsApi.create({
-                assessment_id: form.assessment_id as number,
-                employee_id:   form.employee_id   as number,
+                cycle_id:    form.cycle_id    as number,
+                employee_id: form.employee_id as number,
                 note,
             });
             sendId = (res as { data?: { id?: number } })?.data?.id ?? 0;
@@ -525,11 +545,12 @@ const handleSubmit = async () => {
                 await sendRatersApi.remove(r.id);
             }
             const cleaned = evaluatorRows.value
-                .filter(r => r.evaluator_employee_id !== null)
+                .filter(r => r.evaluator_employee_id !== null && r.assessment_id !== null)
                 .map(r => ({
                     send_id: sendId,
                     evaluator_employee_id: r.evaluator_employee_id as number,
                     evaluator_role: r.evaluator_role,
+                    assessment_id: r.assessment_id as number,
                 }));
             if (cleaned.length > 0) {
                 await sendRatersApi.bulkCreate(cleaned);
@@ -557,23 +578,25 @@ const handleClear = () => {
     empCodeSearch.value = '';
     setEmployeeInfo(null);
     form.employee_id = null;
-    form.assessment_id = null;
+    form.cycle_id = null;
     form.note = '';
-    Object.assign(assessmentInfo, { year: '', cycle: '', type: 'annual_supervisor', typeHint: '' });
+    cycleInfo.year = '';
     evaluatorRows.value = [];
-    errors.empCode = ''; errors.assessmentId = ''; errors.raters = '';
+    errors.empCode = ''; errors.cycleId = ''; errors.raters = '';
     serverError.value = '';
 };
 
 onMounted(async () => {
-    // Load all employees + assessments for selection
+    // Load all employees + assessments + cycles for selection
     try {
-        const [emp, asm] = await Promise.all([
+        const [emp, asm, cyc] = await Promise.all([
             employeesApi.list({ limit: 1000 }),
             assessmentsApi.list({ limit: 500 }),
+            cyclesApi.list({ limit: 100 }),
         ]);
         employeeMaster.value = emp.data;
-        assessmentOptions.value = asm.data;
+        allAssessments.value = asm.data;
+        cycleOptions.value   = cyc.data;
     } catch (e) {
         console.warn('[send/add] failed to load masters', e);
     }
@@ -583,9 +606,9 @@ onMounted(async () => {
         try {
             const res = await sendsApi.get(editId.value);
             const s = res.data;
-            form.assessment_id = s.assessment_id;
-            form.employee_id   = s.employee_id;
-            form.note          = s.note ?? '';
+            form.cycle_id    = s.cycle_id;
+            form.employee_id = s.employee_id;
+            form.note        = s.note ?? '';
             empCodeSearch.value = s.emp_code ?? '';
             employeeInfo.empCode  = s.emp_code ?? '';
             employeeInfo.fullName = s.full_name ?? '';
@@ -593,16 +616,14 @@ onMounted(async () => {
             employeeInfo.level    = s.employee_level_name ?? '';
             employeeInfo.team     = s.employee_team_name ?? '';
             employeeInfo.dept     = s.employee_department_name ?? '';
-            assessmentInfo.year   = s.year ? String(s.year) : '';
-            assessmentInfo.cycle  = s.cycle_label ?? '';
-            // Re-resolve type from loaded assessment options
-            onAssessmentChange();
+            cycleInfo.year        = s.year ? String(s.year) : '';
 
             // Load existing raters for this send
             const raters = await sendRatersApi.listBySend(editId.value) as Array<{
                 id: number;
                 evaluator_employee_id: number;
                 evaluator_role: PmsEvaluationRole;
+                assessment_id: number;
                 pms_employees?: {
                     emp_code?: string;
                     full_name?: string;
@@ -614,6 +635,7 @@ onMounted(async () => {
                 rater_id: r.id,
                 evaluator_employee_id: r.evaluator_employee_id,
                 evaluator_role: r.evaluator_role,
+                assessment_id: r.assessment_id,
                 search: `${r.pms_employees?.emp_code ?? ''} - ${r.pms_employees?.full_name ?? ''}`,
                 position: r.pms_employees?.pms_positions?.name ?? '',
                 level:    r.pms_employees?.pms_levels?.name ?? '',

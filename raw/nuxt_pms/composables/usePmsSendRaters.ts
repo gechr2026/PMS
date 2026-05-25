@@ -11,6 +11,8 @@ export interface PmsSendRater {
     send_id: number;
     evaluator_employee_id: number;
     evaluator_role: PmsEvaluationRole;
+    /** Assessment this rater is evaluating against (added 2026-05-22) */
+    assessment_id: number;
     notified_at: string | null;
     completed_at: string | null;
     is_active: boolean;
@@ -23,6 +25,7 @@ export interface PmsSendRaterCreate {
     send_id: number;
     evaluator_employee_id: number;
     evaluator_role: PmsEvaluationRole;
+    assessment_id: number;
     note?: string | null;
 }
 
