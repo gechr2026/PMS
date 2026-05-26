@@ -37,7 +37,7 @@ export const usePmsSendRaters = () => {
         const { data, error } = await supabase
             .from('pms_assessment_send_raters')
             .select(
-                'id, send_id, evaluator_employee_id, evaluator_role, ' +
+                'id, send_id, evaluator_employee_id, evaluator_role, assessment_id, ' +
                 'notified_at, completed_at, is_active, note, created_at, updated_at, ' +
                 'pms_employees:evaluator_employee_id(id, emp_code, full_name, username, ' +
                     'position_id, level_id, ' +

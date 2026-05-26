@@ -190,8 +190,11 @@
                                         <select
                                             v-model="evaluator.assessment_id"
                                             class="w-full rounded-lg border px-2 py-1.5 text-sm text-gray-700 outline-none focus:border-blue-400 transition"
-                                            :class="evaluator.assessment_id === null && evaluator.search ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200'"
+                                            :class="invalidAssessmentRows.has(idx)
+                                                ? 'border-red-400 bg-red-50/60 ring-1 ring-red-200'
+                                                : (evaluator.assessment_id === null && evaluator.search ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200')"
                                             :disabled="form.cycle_id === null"
+                                            @change="invalidAssessmentRows.delete(idx)"
                                         >
                                             <option :value="null">— เลือกแบบประเมิน —</option>
                                             <option v-for="a in assessmentOptions" :key="a.id" :value="a.id">{{ a.name }}</option>
@@ -344,6 +347,7 @@ const form = reactive<FormState>({
 });
 
 const errors      = reactive({ empCode: '', cycleId: '', raters: '' });
+const invalidAssessmentRows = ref<Set<number>>(new Set());
 const showToast   = ref(false);
 const submitting  = ref(false);
 const serverError = ref('');
@@ -471,23 +475,30 @@ const autoFillSelfRow = () => {
 // ── Validate & Submit ──────────────────────────────────────────────────
 const validate = (): boolean => {
     errors.empCode = ''; errors.cycleId = ''; errors.raters = '';
+    invalidAssessmentRows.value = new Set();
     let valid = true;
     if (form.employee_id === null) { errors.empCode = 'กรุณาเลือกผู้ถูกประเมิน'; valid = false; }
     if (form.cycle_id === null)    { errors.cycleId = 'กรุณาเลือกรอบการประเมิน';  valid = false; }
 
     // Each rater must have employee + assessment selected.
-    const cleaned = evaluatorRows.value.filter(r => r.evaluator_employee_id !== null);
+    // Use `== null` (loose) so both null and undefined trigger validation
+    // — undefined can leak in from EDIT-mode payloads that omit the field.
+    const cleaned = evaluatorRows.value.filter(r => r.evaluator_employee_id != null);
     if (cleaned.length === 0) {
         errors.raters = 'กรุณาเลือกผู้ประเมินอย่างน้อย 1 คน';
         valid = false;
     }
+    const missingAssessment: number[] = [];
     for (let i = 0; i < evaluatorRows.value.length; i++) {
         const r = evaluatorRows.value[i];
-        if (r.evaluator_employee_id !== null && r.assessment_id === null) {
-            errors.raters = `แถวที่ ${i + 1}: กรุณาเลือกแบบประเมินสำหรับผู้ประเมินคนนี้`;
-            valid = false;
-            break;
+        if (r.evaluator_employee_id != null && r.assessment_id == null) {
+            missingAssessment.push(i + 1);
+            invalidAssessmentRows.value.add(i);
         }
+    }
+    if (missingAssessment.length > 0) {
+        errors.raters = `กรุณาเลือกแบบประเมินให้ครบทุกแถว (แถวที่ ${missingAssessment.join(', ')} ยังว่างอยู่)`;
+        valid = false;
     }
     // No duplicate (employee, role, assessment) triples within the file.
     const seen = new Set<string>();
@@ -545,7 +556,7 @@ const handleSubmit = async () => {
                 await sendRatersApi.remove(r.id);
             }
             const cleaned = evaluatorRows.value
-                .filter(r => r.evaluator_employee_id !== null && r.assessment_id !== null)
+                .filter(r => r.evaluator_employee_id != null && r.assessment_id != null)
                 .map(r => ({
                     send_id: sendId,
                     evaluator_employee_id: r.evaluator_employee_id as number,
@@ -583,6 +594,7 @@ const handleClear = () => {
     cycleInfo.year = '';
     evaluatorRows.value = [];
     errors.empCode = ''; errors.cycleId = ''; errors.raters = '';
+    invalidAssessmentRows.value = new Set();
     serverError.value = '';
 };
 
