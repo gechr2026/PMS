@@ -161,7 +161,8 @@ const sendsApi       = usePmsSends();
 const evaluationsApi = usePmsEvaluations();
 const yearsApi       = usePmsYears();
 const cyclesApi      = usePmsCycles();
-const { profile }    = useAuth();
+const { profile, user } = useAuth();
+const supabase       = useSupabase();
 
 type DerivedStatus = 'ยังไม่เข้าทำแบบประเมิน' | 'อยู่ระหว่างการประเมิน' | 'ประเมินเสร็จสิ้นแล้ว';
 
@@ -177,6 +178,10 @@ interface Row {
     cycle_label: string;
     derivedStatus: DerivedStatus;
     rawSendStatus: string;
+    /** Which evaluator perspective this row represents for the current user.
+     *  Drives the per-row evaluation lookup (a supervisor may have both
+     *  a 'self' row for their own send and 'peer' rows for teammates). */
+    evaluatorRole: PmsEvaluationRole;
 }
 
 const rows           = ref<Row[]>([]);
@@ -192,7 +197,10 @@ const filterStatus = ref<DerivedStatus | ''>('');
 // Admin sees edit-link even for sent rows so they can revert via the view page.
 const isAdmin = computed(() => profile.value?.role === 'admin');
 
-// Map current user's role -> evaluator_role they're responsible for
+// Map current user's role -> evaluator_role they're responsible for.
+// Supervisor is handled separately in fetchData (sees both 'self' for their
+// own send AND 'peer' for teammates they're pre-assigned to rate), so it
+// isn't represented here.
 const evaluatorRoleForUser = (): PmsEvaluationRole => {
     const r = profile.value?.role;
     if (r === 'manager')   return 'manager';
@@ -218,39 +226,101 @@ const fetchData = async () => {
     loading.value = true;
     errorMessage.value = '';
     try {
-        // 1) sends — scope to the current user's rater assignments.
-        // officer→self, manager→manager, executive→executive. Admin sees all
-        // (no scoping) so they can browse the whole org from this page.
+        // 1) Fetch sends, tagged per-row with the evaluator role the current
+        // user holds on that send. Behavior per role:
+        //   * admin       → all sends, role='self' as a UI default
+        //   * supervisor  → two queries merged: own send (role='self') +
+        //                   peer-rater assignments (role='peer')
+        //   * manager     → as_rater='me' & evaluator_role='manager'
+        //   * executive   → as_rater='me' & evaluator_role='executive'
+        //   * officer     → as_rater='me' & evaluator_role='self'
         const role = profile.value?.role;
-        const myRole = evaluatorRoleForUser();
         const isAdmin = role === 'admin';
+        const yearParam  = filterYear.value  ? Number(filterYear.value) : undefined;
+        const cycleParam = filterCycle.value || undefined;
 
-        const sendsRes = await sendsApi.list({
-            year:  filterYear.value  ? Number(filterYear.value) : undefined,
-            cycle: filterCycle.value || undefined,
-            ...(isAdmin ? {} : { as_rater: 'me' as const, evaluator_role: myRole }),
-            limit: 500,
-        });
+        // Resolve my employee id once — needed for (a) supervisor's own-send
+        // query, and (b) the per-row evaluation lookup so we only consider
+        // the CURRENT user's evaluation (critical for peer rows where many
+        // raters can have evals on the same send).
+        let myEmpId: number | null = null;
+        if (!isAdmin && user.value?.id) {
+            const { data: me } = await supabase
+                .from('pms_employees')
+                .select('id')
+                .eq('auth_user_id', user.value.id)
+                .maybeSingle();
+            myEmpId = me?.id ?? null;
+        }
 
-        const sends: PmsSend[] = sendsRes.data;
+        type TaggedSend = { send: PmsSend; evaluatorRole: PmsEvaluationRole };
+        const tagged: TaggedSend[] = [];
 
-        if (sends.length === 0) {
+        if (isAdmin) {
+            const res = await sendsApi.list({ year: yearParam, cycle: cycleParam, limit: 500 });
+            for (const s of res.data) tagged.push({ send: s, evaluatorRole: 'self' });
+        } else if (role === 'supervisor') {
+            const [peerSends, selfSends] = await Promise.all([
+                sendsApi.list({
+                    year: yearParam, cycle: cycleParam,
+                    as_rater: 'me', evaluator_role: 'peer',
+                    limit: 500,
+                }).then(r => r.data),
+                myEmpId != null
+                    ? sendsApi.list({
+                        year: yearParam, cycle: cycleParam,
+                        employee_id: myEmpId,
+                        limit: 500,
+                    }).then(r => r.data)
+                    : Promise.resolve([] as PmsSend[]),
+            ]);
+
+            // Self rows first so they sort consistently before peer rows.
+            for (const s of selfSends) tagged.push({ send: s, evaluatorRole: 'self' });
+            const seenSelf = new Set(selfSends.map(s => s.id));
+            for (const s of peerSends) {
+                if (!seenSelf.has(s.id)) tagged.push({ send: s, evaluatorRole: 'peer' });
+            }
+        } else {
+            const myRole = evaluatorRoleForUser();
+            const res = await sendsApi.list({
+                year: yearParam, cycle: cycleParam,
+                as_rater: 'me', evaluator_role: myRole,
+                limit: 500,
+            });
+            for (const s of res.data) tagged.push({ send: s, evaluatorRole: myRole });
+        }
+
+        if (tagged.length === 0) {
             rows.value = [];
             return;
         }
 
-        // 2) Load my evaluation for each send (parallel)
+        // 2) Load my evaluation for each send (parallel). Scope strictly to
+        // (send_id, assessment_id, evaluator_role, evaluator_employee_id).
+        // Without assessment_id + employee_id filters this leaks status from
+        // a different rater or a different assessment that happens to share
+        // (send_id, role) — e.g. supervisor's prior peer eval on another
+        // assessment marked the new assignment as "done".
         const evals = await Promise.all(
-            sends.map(s =>
-                evaluationsApi
-                    .list({ send_id: s.id, evaluator_role: myRole, limit: 1 })
+            tagged.map(t => {
+                const aid = t.send.my_rater_assessment_id ?? t.send.assessments[0]?.id ?? undefined;
+                return evaluationsApi
+                    .list({
+                        send_id: t.send.id,
+                        evaluator_role: t.evaluatorRole,
+                        ...(aid != null ? { assessment_id: aid } : {}),
+                        ...(myEmpId != null ? { evaluator_employee_id: myEmpId } : {}),
+                        limit: 1,
+                    })
                     .then(r => r.data[0] ?? null)
-                    .catch(() => null)
-            )
+                    .catch(() => null);
+            })
         );
 
         // 3) Build rows
-        const built: Row[] = sends.map((s, i) => {
+        const built: Row[] = tagged.map((t, i) => {
+            const s = t.send;
             const e = evals[i];
             let derived: DerivedStatus = 'ยังไม่เข้าทำแบบประเมิน';
             if (e) {
@@ -261,16 +331,22 @@ const fetchData = async () => {
                     derived = 'อยู่ระหว่างการประเมิน';
                 }
             }
+            // Prefer the assessment the current user is specifically assigned
+            // to rate (set by the API when as_rater='me'); fall back to the
+            // send's first assessment for admin / self rows.
+            const ratedAssessmentId   = s.my_rater_assessment_id   ?? s.assessments[0]?.id   ?? null;
+            const ratedAssessmentName = s.my_rater_assessment_name ?? s.primary_assessment_name ?? '-';
             return {
                 send_id: s.id,
-                assessment_id: s.assessments[0]?.id ?? null,
+                assessment_id: ratedAssessmentId,
                 full_name: s.full_name ?? '-',
                 emp_code: s.emp_code ?? '',
-                assessment_name: s.primary_assessment_name ?? '-',
+                assessment_name: ratedAssessmentName,
                 year: s.year ?? '',
                 cycle_label: s.cycle_label ?? '',
                 rawSendStatus: s.status,
                 derivedStatus: derived,
+                evaluatorRole: t.evaluatorRole,
             };
         });
 

@@ -58,6 +58,14 @@ export interface PmsSend {
     assessment_count: number;
     primary_assessment_name: string | null;
     primary_assessment_type: PmsSendAssessment['type'];
+    /** Populated by the API only when listed with `as_rater='me'`: the
+     *  specific assessment the current user is assigned to rate on this
+     *  send (vs `primary_assessment_*` which is just the send's first
+     *  assessment regardless of rater). */
+    my_rater_assessment_id?: number | null;
+    my_rater_assessment_name?: string | null;
+    my_rater_assessment_type?: PmsSendAssessment['type'];
+    my_rater_evaluator_role?: PmsEvaluatorRole | null;
 }
 
 export type PmsEvaluatorRole = 'self' | 'manager' | 'executive' | 'ceo' | 'peer' | 'subordinate';

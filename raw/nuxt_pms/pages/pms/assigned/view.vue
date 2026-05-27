@@ -148,8 +148,8 @@
             </div>
         </div>
 
-        <!-- ── แบบประเมิน KPIs ── -->
-        <div class="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm">
+        <!-- ── แบบประเมิน KPIs (ซ่อนถ้าแบบประเมินนี้ไม่มี KPI เช่น competency_360) ── -->
+        <div v-if="kpiRows.length > 0" class="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm">
             <div class="flex items-center gap-2 border-b border-gray-100 px-5 py-3">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6" stroke-linecap="round"/><line x1="8" y1="12" x2="21" y2="12" stroke-linecap="round"/><line x1="8" y1="18" x2="21" y2="18" stroke-linecap="round"/><line x1="3" y1="6" x2="3.01" y2="6" stroke-linecap="round" stroke-width="2.5"/><line x1="3" y1="12" x2="3.01" y2="12" stroke-linecap="round" stroke-width="2.5"/><line x1="3" y1="18" x2="3.01" y2="18" stroke-linecap="round" stroke-width="2.5"/></svg>
                 <span class="text-sm font-semibold text-gray-700">แบบประเมิน KPIs</span>
@@ -203,8 +203,8 @@
             </div>
         </div>
 
-        <!-- ── แบบประเมิน Competency ── -->
-        <div class="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm">
+        <!-- ── แบบประเมิน Competency (ซ่อนถ้าแบบประเมินนี้ไม่มี Competency) ── -->
+        <div v-if="competencyRows.length > 0" class="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm">
             <div class="flex items-center gap-2 border-b border-gray-100 px-5 py-3">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6" stroke-linecap="round"/><line x1="8" y1="12" x2="21" y2="12" stroke-linecap="round"/><line x1="8" y1="18" x2="21" y2="18" stroke-linecap="round"/><line x1="3" y1="6" x2="3.01" y2="6" stroke-linecap="round" stroke-width="2.5"/><line x1="3" y1="12" x2="3.01" y2="12" stroke-linecap="round" stroke-width="2.5"/><line x1="3" y1="18" x2="3.01" y2="18" stroke-linecap="round" stroke-width="2.5"/></svg>
                 <span class="text-sm font-semibold text-gray-700">แบบประเมิน Competency</span>
@@ -420,7 +420,8 @@ const sendsApi       = usePmsSends();
 const assessmentsApi = usePmsAssessments();
 const evaluationsApi = usePmsEvaluations();
 const calculationApi = usePmsCalculation();
-const { profile }    = useAuth();
+const { profile, user } = useAuth();
+const supabase = useSupabase();
 
 // ── Param parsing ───────────────────────────────────────────────────────
 const sendId = computed<number | null>(() => {
@@ -432,19 +433,29 @@ const sendId = computed<number | null>(() => {
 const readonly = computed(() => route.query.readonly === '1');
 
 // ── Role (auto-detected; admin can switch via UI) ───────────────────────
-type UiRole = 'officer' | 'manager' | 'executive';
+// `supervisor` reuses the officer self-form when evaluating their own send,
+// and the dedicated 'supervisor' branch when peer-evaluating a team member.
+type UiRole = 'officer' | 'manager' | 'executive' | 'supervisor';
 const roles = [
-    { value: 'officer'   as UiRole, label: 'Officer'   },
-    { value: 'manager'   as UiRole, label: 'Manager'   },
-    { value: 'executive' as UiRole, label: 'Executive' },
+    { value: 'officer'    as UiRole, label: 'Officer'    },
+    { value: 'manager'    as UiRole, label: 'Manager'    },
+    { value: 'executive'  as UiRole, label: 'Executive'  },
+    { value: 'supervisor' as UiRole, label: 'Supervisor' },
 ];
 const userRole   = ref<UiRole>('officer');
 const isOfficer  = computed(() => userRole.value === 'officer');
 const isManager  = computed(() => userRole.value === 'manager');
 const isExecutive= computed(() => userRole.value === 'executive');
-const evaluatorRole = computed<PmsEvaluationRole>(() =>
-    isOfficer.value ? 'self' : isManager.value ? 'manager' : 'executive'
-);
+const isSupervisor = computed(() => userRole.value === 'supervisor');
+// Supervisor branches at form time: viewing own send → 'self'; viewing a
+// pre-assigned teammate's send → 'peer'. RLS enforces both.
+const isOwnSend = ref(false);
+const evaluatorRole = computed<PmsEvaluationRole>(() => {
+    if (isManager.value)    return 'manager';
+    if (isExecutive.value)  return 'executive';
+    if (isSupervisor.value) return isOwnSend.value ? 'self' : 'peer';
+    return 'self';
+});
 
 const onRoleSwitch = (r: UiRole) => {
     userRole.value = r;
@@ -622,13 +633,26 @@ async function loadAll() {
 
     // Auto-detect role from profile
     const r = profile.value?.role;
-    if (r === 'manager')        userRole.value = 'manager';
-    else if (r === 'executive') userRole.value = 'executive';
+    if (r === 'manager')         userRole.value = 'manager';
+    else if (r === 'executive')  userRole.value = 'executive';
+    else if (r === 'supervisor') userRole.value = 'supervisor';
     else                         userRole.value = 'officer';
 
     try {
         const sendRes = await sendsApi.get(sendId.value);
         const s = sendRes.data;
+
+        // Supervisor: pick self vs peer based on whether this send targets them.
+        if (userRole.value === 'supervisor' && user.value?.id) {
+            const { data: me } = await supabase
+                .from('pms_employees')
+                .select('id')
+                .eq('auth_user_id', user.value.id)
+                .maybeSingle();
+            isOwnSend.value = me?.id != null && s.employee_id === me.id;
+        } else {
+            isOwnSend.value = false;
+        }
 
         // After 2026-05-22 schema change: a send carries cycle info only.
         // The specific assessment for this view comes from the URL query param.
@@ -662,7 +686,12 @@ async function loadAll() {
         const aRes = await assessmentsApi.get(targetAssessmentId);
         const a = aRes.data;
 
-        kpiRows.value = (a.kpis ?? []).map(k => ({
+        // Peer raters (currently only supervisor doing 360° peer eval) rate
+        // competencies only — KPI evaluation belongs to self/manager/executive.
+        // Skip KPI loading so the section stays hidden and save sends empty
+        // kpi_scores.
+        const skipKpi = evaluatorRole.value === 'peer';
+        kpiRows.value = skipKpi ? [] : (a.kpis ?? []).map(k => ({
             kpi_id:    k.id ?? 0,
             subject:   k.subject,
             detail:    k.detail ?? '',
