@@ -38,6 +38,7 @@ export interface PmsTrackingTask {
     cycle_id: number | null;
     year: number | null;
     cycle_label: string | null;
+    /** Rater (evaluator) — the row's owner, i.e. the person whose detail page this is */
     emp_code: string | null;
     employee_name: string | null;
     position_name: string | null;
@@ -45,6 +46,15 @@ export interface PmsTrackingTask {
     team_name: string | null;
     department_name: string | null;
     level_name: string | null;
+    /** Evaluatee (recipient/ผู้ถูกประเมิน) — who this task is about */
+    evaluatee_employee_id: number | null;
+    evaluatee_emp_code: string | null;
+    evaluatee_name: string | null;
+    evaluatee_position: string | null;
+    evaluatee_team_name: string | null;
+    evaluatee_department_name: string | null;
+    evaluatee_level_name: string | null;
+    evaluator_role: 'self' | 'manager' | 'executive' | 'ceo' | 'peer' | 'subordinate' | null;
     evaluation_id: number | null;
     eval_status: 'draft' | 'submitted' | 'approved' | null;
     send_status: string;

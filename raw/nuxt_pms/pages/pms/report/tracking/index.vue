@@ -165,12 +165,12 @@
                             <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">จำนวนงาน<br>ที่อยู่ระหว่างทำ</th>
                             <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">จำนวนงาน<br>ที่เสร็จแล้ว</th>
                             <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">% Completed</th>
-                            <th class="w-20 px-4 py-3 text-center font-semibold text-gray-700">จัดการ</th>
+                            <th v-if="isAdmin" class="w-20 px-4 py-3 text-center font-semibold text-gray-700">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-if="loading">
-                            <td colspan="11" class="px-4 py-10 text-center text-sm text-gray-400">
+                            <td :colspan="isAdmin ? 11 : 10" class="px-4 py-10 text-center text-sm text-gray-400">
                                 <div class="inline-flex items-center gap-2">
                                     <svg class="animate-spin h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none">
                                         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
@@ -181,7 +181,7 @@
                             </td>
                         </tr>
                         <tr v-else-if="rows.length === 0">
-                            <td colspan="11" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
+                            <td :colspan="isAdmin ? 11 : 10" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
                         </tr>
                         <tr
                             v-else
@@ -204,7 +204,7 @@
                                     :class="pctClass(row.completed_pct)"
                                 >{{ formatPct(row.completed_pct) }}</span>
                             </td>
-                            <td class="px-4 py-3 text-center">
+                            <td v-if="isAdmin" class="px-4 py-3 text-center">
                                 <NuxtLink
                                     :to="`/pms/report/tracking/view?employee_id=${row.employee_id}${row.year ? '&year=' + row.year : ''}${row.cycle_label ? '&cycle=' + encodeURIComponent(row.cycle_label) : ''}`"
                                     class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-500 transition hover:bg-amber-100"
@@ -243,6 +243,8 @@ const cyclesApi    = usePmsCycles();
 const deptsApi     = usePmsDepartments();
 const teamsApi     = usePmsTeams();
 const positionsApi = usePmsPositions();
+const { profile }  = useAuth();
+const isAdmin = computed(() => profile.value?.role === 'admin');
 
 const rows         = ref<PmsTrackingSummaryRow[]>([]);
 const yearOptions  = ref<PmsYear[]>([]);

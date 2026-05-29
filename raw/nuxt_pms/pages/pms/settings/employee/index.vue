@@ -129,7 +129,7 @@
                             <th class="px-4 py-3 text-center font-semibold text-gray-700">ชื่อ-นามสกุล</th>
                             <th class="px-4 py-3 text-center font-semibold text-gray-700">ทีม</th>
                             <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">สถานะ</th>
-                            <th class="w-36 px-4 py-3 text-center font-semibold text-gray-700">จัดการ</th>
+                            <th class="w-44 px-4 py-3 text-center font-semibold text-gray-700">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -174,6 +174,28 @@
                             </td>
                             <td class="px-4 py-3 text-center">
                                 <div class="flex items-center justify-center gap-1.5">
+                                    <button
+                                        v-if="!item.auth_user_id"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-200 text-emerald-600 transition hover:bg-emerald-50"
+                                        title="สร้างบัญชีผู้ใช้"
+                                        @click="openCreateUser(item)"
+                                    >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="9" cy="7" r="4"/>
+                                            <line x1="19" y1="8" x2="19" y2="14" stroke-linecap="round"/>
+                                            <line x1="22" y1="11" x2="16" y2="11" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                    <span
+                                        v-else
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-500"
+                                        title="มีบัญชีผู้ใช้แล้ว"
+                                    >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </span>
                                     <NuxtLink
                                         :to="`/pms/settings/employee/add?id=${item.id}`"
                                         class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 text-blue-500 transition hover:bg-blue-50"
@@ -239,6 +261,69 @@
                 <div class="flex justify-end gap-2">
                     <button class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition" @click="showDeleteModal = false">ยกเลิก</button>
                     <button class="rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60" style="background:#e7515a;" :disabled="deleting" @click="executeDelete">{{ deleting ? 'กำลังลบ...' : 'ลบ' }}</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create User Modal -->
+        <div v-if="showCreateUserModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <div class="mb-4 flex items-center gap-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <line x1="19" y1="8" x2="19" y2="14" stroke-linecap="round"/>
+                            <line x1="22" y1="11" x2="16" y2="11" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">สร้างบัญชีผู้ใช้</h3>
+                        <p class="text-sm text-gray-500">สำหรับ "{{ createUserTarget?.full_name }}" ({{ createUserTarget?.emp_code }})</p>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-600">อีเมล / ชื่อผู้ใช้</label>
+                        <input
+                            v-model="createUserForm.email"
+                            type="email"
+                            class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                            placeholder="user@example.com"
+                        />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-600">บทบาท (role) <span class="text-red-500">*</span></label>
+                        <select
+                            v-model="createUserForm.role"
+                            class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                        >
+                            <option value="officer">Officer — พนักงาน</option>
+                            <option value="supervisor">Supervisor — หัวหน้างาน (peer)</option>
+                            <option value="manager">Manager — หัวหน้า</option>
+                            <option value="executive">Executive — ผู้บริหาร</option>
+                            <option value="admin">Admin — ผู้ดูแลระบบ</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-600">รหัสผ่านเริ่มต้น (ไม่บังคับ)</label>
+                        <input
+                            v-model="createUserForm.password"
+                            type="text"
+                            class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                            placeholder="เว้นว่างเพื่อใช้ค่าเริ่มต้น (Temp@2026!)"
+                        />
+                    </div>
+                </div>
+                <div v-if="createUserError" class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{{ createUserError }}</div>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition" :disabled="creatingUser" @click="showCreateUserModal = false">ยกเลิก</button>
+                    <button
+                        class="rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                        style="background:#059669;"
+                        :disabled="creatingUser || !createUserForm.email.trim()"
+                        @click="executeCreateUser"
+                    >{{ creatingUser ? 'กำลังสร้าง...' : 'สร้างบัญชี' }}</button>
                 </div>
             </div>
         </div>
@@ -378,6 +463,62 @@ const executeDelete   = async () => {
 const showResetModal = ref(false);
 const resetTarget    = ref<PmsEmployee | null>(null);
 const confirmReset   = (item: PmsEmployee) => { resetTarget.value = item; showResetModal.value = true; };
+
+// Create user — calls public.pms_create_user(p_email, p_role, p_full_name, p_username, p_password).
+// The RPC's auto-link logic populates pms_employees.auth_user_id when the
+// employee row's username matches the new auth account's email/username,
+// so successful creation also wires up the rater-lookup chain.
+const supabase = useSupabase();
+const showCreateUserModal = ref(false);
+const createUserTarget    = ref<PmsEmployee | null>(null);
+const createUserError     = ref('');
+const creatingUser        = ref(false);
+type CreateUserRole = 'officer' | 'supervisor' | 'manager' | 'executive' | 'admin';
+const createUserForm = ref<{ email: string; role: CreateUserRole; password: string }>({
+    email: '', role: 'officer', password: '',
+});
+
+const openCreateUser = (item: PmsEmployee) => {
+    createUserTarget.value = item;
+    createUserError.value = '';
+    createUserForm.value = {
+        email: (item.username ?? '').trim(),
+        role: 'officer',
+        password: '',
+    };
+    showCreateUserModal.value = true;
+};
+
+const executeCreateUser = async () => {
+    if (!createUserTarget.value) return;
+    creatingUser.value = true;
+    createUserError.value = '';
+    try {
+        const target = createUserTarget.value;
+        const { error } = await supabase.rpc('pms_create_user', {
+            p_email:     createUserForm.value.email.trim(),
+            p_role:      createUserForm.value.role,
+            p_full_name: target.full_name ?? null,
+            p_username:  target.username ?? null,
+            p_password:  createUserForm.value.password.trim() || null,
+        });
+        if (error) {
+            const code = (error as { code?: string }).code;
+            if (code === '42501')      createUserError.value = 'ไม่มีสิทธิ์สร้างบัญชี (admin เท่านั้น)';
+            else if (code === '23505') createUserError.value = 'บัญชีนี้มีอยู่แล้วในระบบ';
+            else                        createUserError.value = error.message || 'สร้างบัญชีไม่สำเร็จ';
+            return;
+        }
+        showCreateUserModal.value = false;
+        createUserTarget.value = null;
+        // Reload so the new auth_user_id link shows as the green check icon.
+        await fetchList();
+    } catch (e) {
+        createUserError.value = (e as Error).message || 'สร้างบัญชีไม่สำเร็จ';
+    } finally {
+        creatingUser.value = false;
+    }
+};
 
 onMounted(async () => {
     await Promise.all([fetchTeams(), fetchList()]);

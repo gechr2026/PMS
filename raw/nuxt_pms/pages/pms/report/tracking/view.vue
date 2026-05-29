@@ -147,6 +147,7 @@
                                 <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">รอบปี</th>
                                 <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">รอบการประเมิน</th>
                                 <th class="px-4 py-3 text-left font-semibold text-gray-700">ชื่อแบบประเมิน</th>
+                                <th class="w-48 px-4 py-3 text-left font-semibold text-gray-700">ชื่อผู้ถูกประเมิน</th>
                                 <th class="w-40 px-4 py-3 text-left font-semibold text-gray-700">ตำแหน่ง</th>
                                 <th class="w-40 px-4 py-3 text-center font-semibold text-gray-700">แผนก</th>
                                 <th class="w-48 px-4 py-3 text-center font-semibold text-gray-700">สถานะ</th>
@@ -154,7 +155,7 @@
                         </thead>
                         <tbody>
                             <tr v-if="data.tasks.length === 0">
-                                <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบงานประเมิน</td>
+                                <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบงานประเมิน</td>
                             </tr>
                             <tr
                                 v-else
@@ -166,8 +167,12 @@
                                 <td class="px-4 py-3 text-center text-gray-700">{{ task.year ?? '—' }}</td>
                                 <td class="px-4 py-3 text-center text-gray-700">{{ task.cycle_label || '—' }}</td>
                                 <td class="px-4 py-3 text-gray-800">{{ task.assessment_name || '—' }}</td>
-                                <td class="px-4 py-3 text-gray-700">{{ task.position_name || '—' }}</td>
-                                <td class="px-4 py-3 text-center text-gray-700">{{ task.department_name || '—' }}</td>
+                                <td class="px-4 py-3 text-gray-800">
+                                    <div>{{ task.evaluatee_name || '—' }}</div>
+                                    <div v-if="task.evaluatee_emp_code" class="text-[11px] text-gray-400">{{ task.evaluatee_emp_code }}</div>
+                                </td>
+                                <td class="px-4 py-3 text-gray-700">{{ task.evaluatee_position || '—' }}</td>
+                                <td class="px-4 py-3 text-center text-gray-700">{{ task.evaluatee_department_name || '—' }}</td>
                                 <td class="px-4 py-3 text-center">
                                     <span
                                         class="inline-block rounded-full px-3 py-1 text-xs font-semibold"
