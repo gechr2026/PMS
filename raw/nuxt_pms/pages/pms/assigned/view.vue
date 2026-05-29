@@ -450,7 +450,13 @@ const isSupervisor = computed(() => userRole.value === 'supervisor');
 // Supervisor branches at form time: viewing own send → 'self'; viewing a
 // pre-assigned teammate's send → 'peer'. RLS enforces both.
 const isOwnSend = ref(false);
+// When navigating from the assigned list, evaluator_role is passed as a URL
+// param and takes precedence over the system role. This allows a manager
+// assigned as a peer/subordinate rater to submit with the correct role.
+const VALID_EVAL_ROLES: PmsEvaluationRole[] = ['self', 'manager', 'executive', 'ceo', 'peer', 'subordinate'];
 const evaluatorRole = computed<PmsEvaluationRole>(() => {
+    const q = route.query.evaluator_role;
+    if (typeof q === 'string' && (VALID_EVAL_ROLES as string[]).includes(q)) return q as PmsEvaluationRole;
     if (isManager.value)    return 'manager';
     if (isExecutive.value)  return 'executive';
     if (isSupervisor.value) return isOwnSend.value ? 'self' : 'peer';
@@ -631,12 +637,19 @@ async function loadAll() {
     loading.value = true;
     serverError.value = '';
 
-    // Auto-detect role from profile
-    const r = profile.value?.role;
-    if (r === 'manager')         userRole.value = 'manager';
-    else if (r === 'executive')  userRole.value = 'executive';
-    else if (r === 'supervisor') userRole.value = 'supervisor';
-    else                         userRole.value = 'officer';
+    // If arriving from the assigned list with an explicit evaluator_role in the
+    // URL, peer/subordinate raters render as 'officer' (competency-only form).
+    // Otherwise derive from the user's system role as before.
+    const urlEvalRole = route.query.evaluator_role as string | undefined;
+    if (urlEvalRole === 'peer' || urlEvalRole === 'subordinate') {
+        userRole.value = 'officer';
+    } else {
+        const r = profile.value?.role;
+        if (r === 'manager')         userRole.value = 'manager';
+        else if (r === 'executive')  userRole.value = 'executive';
+        else if (r === 'supervisor') userRole.value = 'supervisor';
+        else                         userRole.value = 'officer';
+    }
 
     try {
         const sendRes = await sendsApi.get(sendId.value);
@@ -686,11 +699,9 @@ async function loadAll() {
         const aRes = await assessmentsApi.get(targetAssessmentId);
         const a = aRes.data;
 
-        // Peer raters (currently only supervisor doing 360° peer eval) rate
-        // competencies only — KPI evaluation belongs to self/manager/executive.
-        // Skip KPI loading so the section stays hidden and save sends empty
-        // kpi_scores.
-        const skipKpi = evaluatorRole.value === 'peer';
+        // peer and subordinate raters evaluate competencies only.
+        // self/manager/executive/ceo see both KPI and competency sections.
+        const skipKpi = evaluatorRole.value === 'peer' || evaluatorRole.value === 'subordinate';
         kpiRows.value = skipKpi ? [] : (a.kpis ?? []).map(k => ({
             kpi_id:    k.id ?? 0,
             subject:   k.subject,

@@ -116,7 +116,7 @@
                                 <!-- Edit (or admin-revert): not-yet-sent OR caller is admin -->
                                 <NuxtLink
                                     v-if="item.derivedStatus !== 'ประเมินเสร็จสิ้นแล้ว' || isAdmin"
-                                    :to="`/pms/assigned/view?send_id=${item.send_id}${item.assessment_id ? '&assessment_id=' + item.assessment_id : ''}`"
+                                    :to="`/pms/assigned/view?send_id=${item.send_id}${item.assessment_id ? '&assessment_id=' + item.assessment_id : ''}&evaluator_role=${item.evaluatorRole}`"
                                     class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-500 transition hover:bg-blue-100"
                                     :title="item.derivedStatus === 'ประเมินเสร็จสิ้นแล้ว' ? 'เปิดดู / ปลดล็อกเป็นร่าง' : 'ทำแบบประเมิน'"
                                 >
@@ -259,36 +259,22 @@ const fetchData = async () => {
         if (isAdmin) {
             const res = await sendsApi.list({ year: yearParam, cycle: cycleParam, limit: 500 });
             for (const s of res.data) tagged.push({ send: s, evaluatorRole: 'self' });
-        } else if (role === 'supervisor') {
-            const [peerSends, selfSends] = await Promise.all([
-                sendsApi.list({
-                    year: yearParam, cycle: cycleParam,
-                    as_rater: 'me', evaluator_role: 'peer',
-                    limit: 500,
-                }).then(r => r.data),
-                myEmpId != null
-                    ? sendsApi.list({
-                        year: yearParam, cycle: cycleParam,
-                        employee_id: myEmpId,
-                        limit: 500,
-                    }).then(r => r.data)
-                    : Promise.resolve([] as PmsSend[]),
-            ]);
-
-            // Self rows first so they sort consistently before peer rows.
-            for (const s of selfSends) tagged.push({ send: s, evaluatorRole: 'self' });
-            const seenSelf = new Set(selfSends.map(s => s.id));
-            for (const s of peerSends) {
-                if (!seenSelf.has(s.id)) tagged.push({ send: s, evaluatorRole: 'peer' });
-            }
         } else {
-            const myRole = evaluatorRoleForUser();
+            // All non-admin: fetch every rater assignment for this user without
+            // filtering by evaluator_role. The API populates my_rater_evaluator_role
+            // per row so the correct role (self/manager/peer/subordinate/…) is
+            // used for each assignment regardless of the user's system role.
             const res = await sendsApi.list({
                 year: yearParam, cycle: cycleParam,
-                as_rater: 'me', evaluator_role: myRole,
+                as_rater: 'me',
                 limit: 500,
             });
-            for (const s of res.data) tagged.push({ send: s, evaluatorRole: myRole });
+            for (const s of res.data) {
+                tagged.push({
+                    send: s,
+                    evaluatorRole: (s.my_rater_evaluator_role ?? evaluatorRoleForUser()) as PmsEvaluationRole,
+                });
+            }
         }
 
         if (tagged.length === 0) {
