@@ -482,8 +482,7 @@ const form = reactive<FormState>({
 });
 
 const typeOptions: Array<{ value: AssessmentType; label: string; hint: string }> = [
-    { value: 'annual_supervisor', label: 'ประจำปี',                  hint: 'KPI + Competency — เลือกผู้ประเมินตอนสร้าง send (self / หัวหน้า / ผู้บริหาร / CEO)' },
-    { value: 'competency_360',    label: 'สมรรถนะ Competency 360°', hint: 'Competency only, ประเมินทุกทิศ (peer / subordinate / supervisor)' },
+    { value: 'annual_supervisor', label: 'ประจำปี', hint: 'KPI + Competency — เลือกผู้ประเมินตอนสร้าง send (self / หัวหน้า / ผู้บริหาร / CEO)' },
 ];
 
 const isCompetencyOnly = computed(() => form.type === 'competency_360');

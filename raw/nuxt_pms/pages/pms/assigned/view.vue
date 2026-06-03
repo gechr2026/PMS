@@ -25,20 +25,6 @@
             </NuxtLink>
         </div>
 
-        <!-- Role Switcher (admin only — test perspectives) -->
-        <div v-if="profile?.role === 'admin'" class="mb-5 flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-            <span class="text-xs font-semibold text-blue-600">Admin — Switch role view:</span>
-            <div class="flex gap-1">
-                <button
-                    v-for="r in roles" :key="r.value"
-                    type="button"
-                    class="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-                    :class="userRole === r.value ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'"
-                    @click="onRoleSwitch(r.value)"
-                >{{ r.label }}</button>
-            </div>
-        </div>
-
         <!-- Loading / Error banners -->
         <div v-if="loading" class="mb-5 rounded-xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
             <div class="inline-flex items-center gap-2">
@@ -73,6 +59,21 @@
                     <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">สถานะ</p>
                     <p class="text-sm font-semibold text-red-500">{{ assessment.status }}</p>
                 </div>
+            </div>
+        </div>
+
+        <!-- ── Section: ผู้ประเมิน (admin only) ── -->
+        <div v-if="profile?.role === 'admin'" class="mb-5 rounded-xl border border-blue-200 bg-blue-50 shadow-sm">
+            <div class="flex items-center gap-2 border-b border-blue-100 px-5 py-3">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2">
+                    <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke-linecap="round"/>
+                </svg>
+                <span class="text-sm font-semibold text-blue-700">ผู้ประเมิน</span>
+            </div>
+            <div class="grid grid-cols-3 gap-6 px-6 py-4">
+                <div><p class="mb-1 text-xs font-semibold text-blue-600">รหัสพนักงาน</p><p class="text-sm text-gray-800">{{ evaluatorInfo.empCode || '-' }}</p></div>
+                <div><p class="mb-1 text-xs font-semibold text-blue-600">ชื่อผู้ประเมิน</p><p class="text-sm text-gray-800">{{ evaluatorInfo.name || '-' }}</p></div>
+                <div><p class="mb-1 text-xs font-semibold text-blue-600">บทบาท</p><p class="text-sm text-gray-800">{{ evaluatorRoleLabel }}</p></div>
             </div>
         </div>
 
@@ -241,8 +242,8 @@
                                 <p class="text-xs font-medium text-gray-800 whitespace-pre-line leading-relaxed">{{ comp.subject }}</p>
                             </td>
                             <td class="px-3 py-4 text-center font-semibold text-gray-700 align-top">{{ comp.target }}</td>
-                            <td v-for="n in 5" :key="n" class="px-3 py-4 align-top">
-                                <div class="flex flex-col items-start gap-1.5">
+                            <td v-for="n in 5" :key="n" class="px-3 py-4 text-center align-top">
+                                <div class="flex flex-col items-center gap-1.5">
                                     <input
                                         type="radio"
                                         :name="`comp-${idx}`"
@@ -338,6 +339,7 @@
         <!-- ── Action Buttons ── -->
         <div v-if="!readonly" class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
             <button
+                v-if="profile?.role !== 'admin'"
                 type="button"
                 class="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                 style="background:#16a34a;"
@@ -350,6 +352,7 @@
                 {{ busy ? 'กำลังบันทึก...' : 'ส่งแบบประเมิน' }}
             </button>
             <button
+                v-if="profile?.role !== 'admin'"
                 type="button"
                 class="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                 style="background:#4361ee;"
@@ -379,6 +382,7 @@
                 ปลดล็อกเป็นร่าง
             </button>
             <button
+                v-if="profile?.role !== 'admin'"
                 type="button"
                 class="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-5 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
                 @click="handleClear"
@@ -432,16 +436,18 @@ const sendId = computed<number | null>(() => {
 });
 const readonly = computed(() => route.query.readonly === '1');
 
+// Admin-only: evaluator display info (populated in loadAll for admin)
+const evaluatorInfo = reactive({ name: '', empCode: '', role: '' });
+const ROLE_LABELS: Record<string, string> = {
+    self: 'Self (ประเมินตนเอง)', manager: 'Manager', executive: 'Executive',
+    ceo: 'CEO', peer: 'Peer', subordinate: 'Subordinate',
+};
+const evaluatorRoleLabel = computed(() => ROLE_LABELS[evaluatorInfo.role] ?? evaluatorInfo.role ?? '-');
+
 // ── Role (auto-detected; admin can switch via UI) ───────────────────────
 // `supervisor` reuses the officer self-form when evaluating their own send,
 // and the dedicated 'supervisor' branch when peer-evaluating a team member.
 type UiRole = 'officer' | 'manager' | 'executive' | 'supervisor';
-const roles = [
-    { value: 'officer'    as UiRole, label: 'Officer'    },
-    { value: 'manager'    as UiRole, label: 'Manager'    },
-    { value: 'executive'  as UiRole, label: 'Executive'  },
-    { value: 'supervisor' as UiRole, label: 'Supervisor' },
-];
 const userRole   = ref<UiRole>('officer');
 const isOfficer  = computed(() => userRole.value === 'officer');
 const isManager  = computed(() => userRole.value === 'manager');
@@ -462,12 +468,6 @@ const evaluatorRole = computed<PmsEvaluationRole>(() => {
     if (isSupervisor.value) return isOwnSend.value ? 'self' : 'peer';
     return 'self';
 });
-
-const onRoleSwitch = (r: UiRole) => {
-    userRole.value = r;
-    applyMyEvaluationToRows();
-    applyManagerScoresForExecutive();
-};
 
 // ── Assessment / Employee display (legacy field names kept) ─────────────
 const assessment = reactive({ name: '', year: '', cycle: '', status: '' });
@@ -687,7 +687,7 @@ async function loadAll() {
         assessment.name   = s.assessments.find(a => a.id === targetAssessmentId)?.name ?? s.primary_assessment_name ?? '';
         assessment.year   = s.year != null ? String(s.year) : '';
         assessment.cycle  = s.cycle_label ?? '';
-        assessment.status = statusLabel(s.status);
+        assessment.status = 'ยังไม่เข้าทำแบบประเมิน'; // updated after evaluations load
 
         employee.empCode  = s.emp_code ?? '';
         employee.name     = s.full_name ?? '';
@@ -727,7 +727,34 @@ async function loadAll() {
         const evRes = await evaluationsApi.bySend(sendId.value);
         allEvaluations.value = evRes.data;
 
+        // Admin: resolve evaluator identity for display
+        if (profile.value?.role === 'admin') {
+            const urlRole    = typeof route.query.evaluator_role    === 'string' ? route.query.evaluator_role    : '';
+            const urlName    = typeof route.query.evaluator_name    === 'string' ? route.query.evaluator_name    : '';
+            const urlEmpCode = typeof route.query.evaluator_emp_code === 'string' ? route.query.evaluator_emp_code : '';
+            evaluatorInfo.role = urlRole;
+            if (urlName) {
+                evaluatorInfo.name    = urlName;
+                evaluatorInfo.empCode = urlEmpCode;
+            } else {
+                // Fallback: fetch from send_raters → pms_employees
+                const { data: rater } = await supabase
+                    .from('pms_assessment_send_raters')
+                    .select('evaluator_role, pms_employees!pms_assessment_send_raters_evaluator_employee_id_fkey(emp_code, full_name)')
+                    .eq('send_id', sendId.value!)
+                    .eq('evaluator_role', urlRole || evaluatorRole.value)
+                    .eq('is_active', true)
+                    .maybeSingle();
+                if (rater) {
+                    const emp = (rater as unknown as { pms_employees?: { emp_code?: string; full_name?: string } }).pms_employees;
+                    evaluatorInfo.name    = emp?.full_name ?? '-';
+                    evaluatorInfo.empCode = emp?.emp_code  ?? '-';
+                }
+            }
+        }
+
         applyMyEvaluationToRows();
+        assessment.status = statusLabel(getEvalByRole(evaluatorRole.value)?.status ?? '');
         applyManagerScoresForExecutive();
     } catch (e) {
         serverError.value = (e as PmsApiError).message || 'โหลดข้อมูลไม่สำเร็จ';

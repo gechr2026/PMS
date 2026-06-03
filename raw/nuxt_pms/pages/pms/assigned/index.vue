@@ -68,7 +68,8 @@
                     <thead>
                         <tr class="border-b border-gray-200 bg-gray-50">
                             <th class="w-14 px-4 py-3 text-center font-semibold text-gray-700">ลำดับ</th>
-                            <th class="w-36 px-4 py-3 text-left font-semibold text-gray-700">ชื่อ-นามสกุล</th>
+                            <th class="w-36 px-4 py-3 text-left font-semibold text-gray-700">ผู้ถูกประเมิน</th>
+                            <th v-if="isAdmin" class="w-36 px-4 py-3 text-left font-semibold text-gray-700">ผู้ประเมิน</th>
                             <th class="px-4 py-3 text-left font-semibold text-gray-700">ชื่อแบบประเมิน</th>
                             <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">รอบปีการประเมิน</th>
                             <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">รอบการประเมิน</th>
@@ -78,7 +79,7 @@
                     </thead>
                     <tbody>
                         <tr v-if="loading">
-                            <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">
+                            <td :colspan="isAdmin ? 8 : 7" class="px-4 py-10 text-center text-sm text-gray-400">
                                 <div class="inline-flex items-center gap-2">
                                     <svg class="animate-spin h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none">
                                         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
@@ -89,7 +90,7 @@
                             </td>
                         </tr>
                         <tr v-else-if="rows.length === 0">
-                            <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
+                            <td :colspan="isAdmin ? 8 : 7" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
                         </tr>
                         <tr
                             v-else
@@ -99,6 +100,10 @@
                         >
                             <td class="px-4 py-3 text-center text-gray-600">{{ index + 1 }}</td>
                             <td class="px-4 py-3 font-medium text-gray-800">{{ item.full_name }}</td>
+                            <td v-if="isAdmin" class="px-4 py-3 text-gray-700">
+                                <span class="font-medium text-gray-800">{{ item.evaluatorName || '-' }}</span>
+                                <span v-if="item.evaluatorEmpCode" class="block text-xs text-gray-400">{{ item.evaluatorEmpCode }}</span>
+                            </td>
                             <td class="px-4 py-3 text-gray-700">{{ item.assessment_name }}</td>
                             <td class="px-4 py-3 text-center text-gray-600">{{ item.year }}</td>
                             <td class="px-4 py-3 text-center text-gray-600">{{ item.cycle_label }}</td>
@@ -116,7 +121,7 @@
                                 <!-- Edit (or admin-revert): not-yet-sent OR caller is admin -->
                                 <NuxtLink
                                     v-if="item.derivedStatus !== 'ประเมินเสร็จสิ้นแล้ว' || isAdmin"
-                                    :to="`/pms/assigned/view?send_id=${item.send_id}${item.assessment_id ? '&assessment_id=' + item.assessment_id : ''}&evaluator_role=${item.evaluatorRole}`"
+                                    :to="`/pms/assigned/view?send_id=${item.send_id}${item.assessment_id ? '&assessment_id=' + item.assessment_id : ''}&evaluator_role=${item.evaluatorRole}${item.evaluatorName ? '&evaluator_name=' + encodeURIComponent(item.evaluatorName) : ''}${item.evaluatorEmpCode ? '&evaluator_emp_code=' + encodeURIComponent(item.evaluatorEmpCode) : ''}`"
                                     class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-500 transition hover:bg-blue-100"
                                     :title="item.derivedStatus === 'ประเมินเสร็จสิ้นแล้ว' ? 'เปิดดู / ปลดล็อกเป็นร่าง' : 'ทำแบบประเมิน'"
                                 >
@@ -161,6 +166,7 @@ const sendsApi       = usePmsSends();
 const evaluationsApi = usePmsEvaluations();
 const yearsApi       = usePmsYears();
 const cyclesApi      = usePmsCycles();
+const { request }    = usePmsApi();
 const { profile, user } = useAuth();
 const supabase       = useSupabase();
 
@@ -182,6 +188,8 @@ interface Row {
      *  Drives the per-row evaluation lookup (a supervisor may have both
      *  a 'self' row for their own send and 'peer' rows for teammates). */
     evaluatorRole: PmsEvaluationRole;
+    evaluatorName: string;
+    evaluatorEmpCode: string;
 }
 
 const rows           = ref<Row[]>([]);
@@ -253,28 +261,66 @@ const fetchData = async () => {
             myEmpId = me?.id ?? null;
         }
 
+        // ── Admin path: call pms-assigned?all=true → one row per rater assignment ──
+        if (isAdmin) {
+            interface AssignedRow {
+                send_id: number;
+                assessment_id: number | null;
+                assessment_name: string | null;
+                year: number | null;
+                cycle_label: string | null;
+                evaluator_role: string | null;
+                evaluatee_name: string | null;
+                evaluatee_emp_code: string | null;
+                eval_status: string | null;
+                employee_name: string | null;
+                emp_code: string | null;
+            }
+            const q: Record<string, string | number | undefined> = { all: 'true', limit: 500 };
+            if (yearParam)  q.year  = yearParam;
+            if (cycleParam) q.cycle = cycleParam;
+            const res = await request<{ data: AssignedRow[] }>('/pms-assigned', { query: q });
+            const built: Row[] = (res.data ?? []).map(r => {
+                let derived: DerivedStatus = 'ยังไม่เข้าทำแบบประเมิน';
+                if (r.eval_status === 'sent')  derived = 'ประเมินเสร็จสิ้นแล้ว';
+                else if (r.eval_status === 'draft') derived = 'อยู่ระหว่างการประเมิน';
+                return {
+                    send_id: r.send_id,
+                    assessment_id: r.assessment_id,
+                    full_name: r.evaluatee_name ?? '-',
+                    emp_code: r.evaluatee_emp_code ?? '',
+                    assessment_name: r.assessment_name ?? '-',
+                    year: r.year ?? '',
+                    cycle_label: r.cycle_label ?? '',
+                    rawSendStatus: '',
+                    derivedStatus: derived,
+                    evaluatorRole: (r.evaluator_role ?? 'self') as PmsEvaluationRole,
+                    evaluatorName: r.employee_name ?? '-',
+                    evaluatorEmpCode: r.emp_code ?? '',
+                };
+            });
+            rows.value = filterStatus.value ? built.filter(r => r.derivedStatus === filterStatus.value) : built;
+            return;
+        }
+
+        // ── Non-admin path ──
         type TaggedSend = { send: PmsSend; evaluatorRole: PmsEvaluationRole };
         const tagged: TaggedSend[] = [];
 
-        if (isAdmin) {
-            const res = await sendsApi.list({ year: yearParam, cycle: cycleParam, limit: 500 });
-            for (const s of res.data) tagged.push({ send: s, evaluatorRole: 'self' });
-        } else {
-            // All non-admin: fetch every rater assignment for this user without
-            // filtering by evaluator_role. The API populates my_rater_evaluator_role
-            // per row so the correct role (self/manager/peer/subordinate/…) is
-            // used for each assignment regardless of the user's system role.
-            const res = await sendsApi.list({
-                year: yearParam, cycle: cycleParam,
-                as_rater: 'me',
-                limit: 500,
+        // All non-admin: fetch every rater assignment for this user without
+        // filtering by evaluator_role. The API populates my_rater_evaluator_role
+        // per row so the correct role (self/manager/peer/subordinate/…) is
+        // used for each assignment regardless of the user's system role.
+        const res = await sendsApi.list({
+            year: yearParam, cycle: cycleParam,
+            as_rater: 'me',
+            limit: 500,
+        });
+        for (const s of res.data) {
+            tagged.push({
+                send: s,
+                evaluatorRole: (s.my_rater_evaluator_role ?? evaluatorRoleForUser()) as PmsEvaluationRole,
             });
-            for (const s of res.data) {
-                tagged.push({
-                    send: s,
-                    evaluatorRole: (s.my_rater_evaluator_role ?? evaluatorRoleForUser()) as PmsEvaluationRole,
-                });
-            }
         }
 
         if (tagged.length === 0) {
@@ -333,6 +379,8 @@ const fetchData = async () => {
                 rawSendStatus: s.status,
                 derivedStatus: derived,
                 evaluatorRole: t.evaluatorRole,
+                evaluatorName: '',
+                evaluatorEmpCode: '',
             };
         });
 
