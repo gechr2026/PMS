@@ -59,28 +59,28 @@
             <button class="text-red-500 hover:text-red-700" @click="errorMessage = ''">×</button>
         </div>
 
-        <!-- Stat Cards -->
+        <!-- Stat Cards (personal — my assigned evaluations) -->
         <div class="mb-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
             <div class="rounded-xl p-5 text-white" style="background:#4361ee;">
                 <p class="text-sm font-medium opacity-90">จำนวนงานที่ได้รับมอบหมาย</p>
-                <p class="mt-3 text-5xl font-bold">{{ data?.stats.total ?? 0 }}</p>
+                <p class="mt-3 text-5xl font-bold">{{ data?.my_stats.total ?? 0 }}</p>
             </div>
             <div class="rounded-xl p-5 text-white" style="background:#e7515a;">
                 <p class="text-sm font-medium opacity-90">จำนวนงานที่ยังไม่ได้ทำ</p>
-                <p class="mt-3 text-5xl font-bold">{{ data?.stats.pending ?? 0 }}</p>
+                <p class="mt-3 text-5xl font-bold">{{ data?.my_stats.pending ?? 0 }}</p>
             </div>
             <div class="rounded-xl p-5 text-white" style="background:#e2a03f;">
                 <p class="text-sm font-medium opacity-90">จำนวนงานที่อยู่ระหว่างทำ</p>
-                <p class="mt-3 text-5xl font-bold">{{ data?.stats.in_progress ?? 0 }}</p>
+                <p class="mt-3 text-5xl font-bold">{{ data?.my_stats.in_progress ?? 0 }}</p>
             </div>
             <div class="rounded-xl p-5 text-white" style="background:#00ab55;">
                 <p class="text-sm font-medium opacity-90">จำนวนงานที่เสร็จแล้ว</p>
-                <p class="mt-3 text-5xl font-bold">{{ data?.stats.done ?? 0 }}</p>
+                <p class="mt-3 text-5xl font-bold">{{ data?.my_stats.done ?? 0 }}</p>
             </div>
         </div>
 
-        <!-- Charts Row 1 -->
-        <div class="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <!-- Charts Row 1 (admin / manager only) -->
+        <div v-if="showOrgCharts" class="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
             <!-- Donut Chart -->
             <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <h2 class="mb-4 text-sm font-bold text-gray-800">ความคืบหน้าทั้งองค์กร</h2>
@@ -122,8 +122,8 @@
             </div>
         </div>
 
-        <!-- Charts Row 2 -->
-        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <!-- Charts Row 2 (admin / manager only) -->
+        <div v-if="showOrgCharts" class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 class="mb-4 text-sm font-bold text-gray-800">คะแนนเฉลี่ยของแต่ละแผนก</h2>
             <client-only>
                 <div v-if="avgScoreCategories.length === 0" class="flex h-[300px] items-center justify-center text-gray-400 text-sm">
@@ -154,9 +154,15 @@ import type { PmsCycle } from '@/composables/usePmsCycles';
 useHead({ title: 'แดชบอร์ด | ระบบประเมินผลการปฏิบัติงาน' });
 definePageMeta({ layout: 'pms-layout' });
 
+const { profile } = useAuth();
 const dashboardApi = usePmsDashboard();
 const yearsApi     = usePmsYears();
 const cyclesApi    = usePmsCycles();
+
+/** Org-level charts visible only to admin and manager roles */
+const showOrgCharts = computed(() =>
+    profile.value?.role === 'admin' || profile.value?.role === 'manager'
+);
 
 // ── Filters ────────────────────────────────────────────────────
 const filterYearId  = ref<number | null>(null);

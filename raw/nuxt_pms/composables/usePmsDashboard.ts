@@ -43,6 +43,9 @@ export interface PmsDashboardByRole {
 
 export interface PmsDashboardPayload {
     filters: { year_id: number | null; cycle_id: number | null };
+    /** Personal workload — evaluations the current user is assigned to complete */
+    my_stats: PmsDashboardStats;
+    /** Org-wide workload — all rater rows across the system */
     stats: PmsDashboardStats;
     by_department: PmsDashboardByDepartment[];
     by_assessment_type: PmsDashboardByAssessmentType[];

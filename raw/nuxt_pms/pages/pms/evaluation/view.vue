@@ -313,6 +313,8 @@ definePageMeta({ layout: 'pms-layout' });
 
 const route = useRoute();
 const resultsApi = usePmsEvaluationResults();
+const { profile } = useAuth();
+const MANAGER_VISIBLE_ROLES = new Set(['self', 'manager']);
 
 const sendId = computed<number | null>(() => {
     const v = route.query.send_id ?? route.query.id;
@@ -400,7 +402,11 @@ interface PerRoleStatRow {
 
 const perRoleStats = computed<PerRoleStatRow[]>(() => {
     if (!data.value) return [];
-    return data.value.per_role.map(pr => {
+    let roles = data.value.per_role;
+    if (profile.value?.role === 'manager') {
+        roles = roles.filter(pr => MANAGER_VISIBLE_ROLES.has(pr.evaluator_role));
+    }
+    return roles.map(pr => {
         const kpi  = meanByRole(data.value!.kpis,         pr.evaluator_role);
         const comp = meanByRole(data.value!.competencies, pr.evaluator_role);
         let total: number | null = null;
@@ -430,7 +436,11 @@ interface EvaluatorStatRow {
 
 const evaluatorStats = computed<EvaluatorStatRow[]>(() => {
     if (!data.value) return [];
-    return data.value.evaluations.map(ev => {
+    let evals = data.value.evaluations;
+    if (profile.value?.role === 'manager') {
+        evals = evals.filter(ev => MANAGER_VISIBLE_ROLES.has(ev.evaluator_role));
+    }
+    return evals.map(ev => {
         const kpi  = meanByEvaluator(data.value!.kpis,         ev.id);
         const comp = meanByEvaluator(data.value!.competencies, ev.id);
         let total: number | null = null;

@@ -9,13 +9,16 @@
                         <path d="M9 7h6M9 11h6M9 15h6" stroke-linecap="round"/>
                     </svg>
                 </div>
-                <h1 class="text-lg font-bold text-gray-800">รายงาน</h1>
+                <div>
+                    <h1 class="text-lg font-bold text-gray-800">{{ isManagerView ? 'ผลการประเมินตนเอง' : 'รายงาน' }}</h1>
+                    <p v-if="isManagerView" class="text-xs text-gray-500">เฉพาะพนักงานในทีมของคุณ</p>
+                </div>
             </div>
             <button
                 type="button"
                 class="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 style="background:#10b981;"
-                :disabled="loading || rows.length === 0"
+                :disabled="loading || (isManagerView ? selfRows.length === 0 : rows.length === 0)"
                 @click="handleExport"
             >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -53,8 +56,8 @@
                 </div>
             </div>
 
-            <!-- Row 2: แผนก + ทีม -->
-            <div class="mb-4 grid grid-cols-2 gap-4">
+            <!-- Row 2: แผนก + ทีม (admin / executive เท่านั้น) -->
+            <div v-if="!isManagerView" class="mb-4 grid grid-cols-2 gap-4">
                 <div>
                     <label class="mb-1.5 block text-sm font-semibold text-gray-700">แผนก</label>
                     <div class="relative">
@@ -103,7 +106,9 @@
         <!-- Table Card -->
         <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+
+                <!-- Admin / Executive: full org report -->
+                <table v-if="!isManagerView" class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-200 bg-gray-50">
                             <th class="w-14 px-4 py-3 text-center font-semibold text-gray-700">ลำดับ</th>
@@ -146,6 +151,68 @@
                         </tr>
                     </tbody>
                 </table>
+
+                <!-- Manager: self-eval report scoped to own team -->
+                <table v-else class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 bg-gray-50">
+                            <th class="w-14 px-4 py-3 text-center font-semibold text-gray-700">ลำดับ</th>
+                            <th class="w-32 px-4 py-3 text-center font-semibold text-gray-700">รอบปีการประเมิน</th>
+                            <th class="w-32 px-4 py-3 text-center font-semibold text-gray-700">รอบการประเมิน</th>
+                            <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">รหัสพนักงาน</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">ชื่อ-นามสกุล</th>
+                            <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">คะแนน KPI</th>
+                            <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">คะแนน Comp.</th>
+                            <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">คะแนนรวม</th>
+                            <th class="w-20 px-4 py-3 text-center font-semibold text-gray-700">เกรด</th>
+                            <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-if="loading">
+                            <td colspan="10" class="px-4 py-10 text-center text-sm text-gray-400">
+                                <div class="inline-flex items-center gap-2">
+                                    <svg class="animate-spin h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
+                                        <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                                    </svg>
+                                    กำลังโหลดข้อมูล...
+                                </div>
+                            </td>
+                        </tr>
+                        <tr v-else-if="selfRows.length === 0">
+                            <td colspan="10" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
+                        </tr>
+                        <tr
+                            v-else
+                            v-for="(item, index) in selfRows"
+                            :key="item.evaluation_id"
+                            class="border-b border-gray-100 transition hover:bg-gray-50"
+                        >
+                            <td class="px-4 py-3 text-center text-gray-600">{{ index + 1 }}</td>
+                            <td class="px-4 py-3 text-center text-gray-700">{{ item.year ?? '—' }}</td>
+                            <td class="px-4 py-3 text-center text-gray-700">{{ item.cycle_label || '—' }}</td>
+                            <td class="px-4 py-3 text-center font-medium text-gray-800">{{ item.emp_code || '—' }}</td>
+                            <td class="px-4 py-3 font-medium text-gray-800">{{ item.employee_name || '—' }}</td>
+                            <td class="px-4 py-3 text-center text-gray-700">{{ item.kpi_score != null ? item.kpi_score.toFixed(2) : '—' }}</td>
+                            <td class="px-4 py-3 text-center text-gray-700">{{ item.competency_score != null ? item.competency_score.toFixed(2) : '—' }}</td>
+                            <td class="px-4 py-3 text-center text-gray-700">{{ item.total_score != null ? item.total_score.toFixed(2) : '—' }}</td>
+                            <td class="px-4 py-3 text-center">
+                                <span v-if="item.grade" class="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold" style="background:#eff6ff;color:#2563eb;">{{ item.grade }}</span>
+                                <span v-else class="text-gray-400">—</span>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <span
+                                    class="inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                                    :style="item.eval_status === 'sent'
+                                        ? 'background:#dcfce7;color:#16a34a;'
+                                        : 'background:#fef9c3;color:#ca8a04;'"
+                                >{{ item.eval_status === 'sent' ? 'ส่งแล้ว' : 'ร่าง' }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
             </div>
         </div>
 
@@ -162,7 +229,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { PmsApiError } from '@/composables/usePmsApi';
-import type { PmsReportRow } from '@/composables/usePmsReports';
+import type { PmsReportRow, PmsSelfEvalRow } from '@/composables/usePmsReports';
 import type { PmsYear } from '@/composables/usePmsYears';
 import type { PmsCycle } from '@/composables/usePmsCycles';
 import type { PmsDepartment } from '@/composables/usePmsDepartments';
@@ -171,13 +238,18 @@ import type { PmsTeam } from '@/composables/usePmsTeams';
 useHead({ title: 'รายงาน | ระบบประเมินผลการปฏิบัติงาน' });
 definePageMeta({ layout: 'pms-layout' });
 
-const reportsApi = usePmsReports();
-const yearsApi   = usePmsYears();
-const cyclesApi  = usePmsCycles();
-const deptsApi   = usePmsDepartments();
-const teamsApi   = usePmsTeams();
+const { profile }  = useAuth();
+const reportsApi   = usePmsReports();
+const yearsApi     = usePmsYears();
+const cyclesApi    = usePmsCycles();
+const deptsApi     = usePmsDepartments();
+const teamsApi     = usePmsTeams();
+
+/** Manager sees only their team's self-eval rows; admin/exec see the full org report */
+const isManagerView = computed(() => profile.value?.role === 'manager');
 
 const rows         = ref<PmsReportRow[]>([]);
+const selfRows     = ref<PmsSelfEvalRow[]>([]);
 const yearOptions  = ref<PmsYear[]>([]);
 const cycleOptions = ref<PmsCycle[]>([]);
 const deptOptions  = ref<PmsDepartment[]>([]);
@@ -200,16 +272,20 @@ const filteredTeamOptions = computed(() => {
 
 const fetchMasters = async () => {
     try {
-        const [y, c, d, t] = await Promise.all([
+        const [y, c] = await Promise.all([
             yearsApi.list({ limit: 200 }),
             cyclesApi.list({ limit: 500 }),
-            deptsApi.list({ limit: 200 }),
-            teamsApi.list({ limit: 500 }),
         ]);
         yearOptions.value  = y.data.slice().sort((a, b) => b.year - a.year);
         cycleOptions.value = c.data;
-        deptOptions.value  = d.data;
-        teamOptions.value  = t.data;
+        if (!isManagerView.value) {
+            const [d, t] = await Promise.all([
+                deptsApi.list({ limit: 200 }),
+                teamsApi.list({ limit: 500 }),
+            ]);
+            deptOptions.value = d.data;
+            teamOptions.value = t.data;
+        }
     } catch (e) {
         console.warn('[reports] failed to load masters', e);
     }
@@ -219,17 +295,27 @@ const fetchList = async () => {
     loading.value = true;
     errorMessage.value = '';
     try {
-        const res = await reportsApi.list({
-            year:  filterYear.value === '' ? undefined : Number(filterYear.value),
-            cycle: filterCycle.value || undefined,
-            dept:  filterDept.value  || undefined,
-            team:  filterTeam.value  || undefined,
-            limit: 1000,
-        });
-        rows.value = res.data;
+        if (isManagerView.value) {
+            const selectedCycleId = cycleOptions.value.find(c => c.cycle_label === filterCycle.value)?.id;
+            const res = await reportsApi.selfList({
+                year_id:  filterYear.value === '' ? undefined : Number(filterYear.value),
+                cycle_id: selectedCycleId,
+            });
+            selfRows.value = res.data;
+        } else {
+            const res = await reportsApi.list({
+                year:  filterYear.value === '' ? undefined : Number(filterYear.value),
+                cycle: filterCycle.value || undefined,
+                dept:  filterDept.value  || undefined,
+                team:  filterTeam.value  || undefined,
+                limit: 1000,
+            });
+            rows.value = res.data;
+        }
     } catch (e) {
         errorMessage.value = (e as PmsApiError).message || 'ไม่สามารถโหลดข้อมูลได้';
-        rows.value = [];
+        rows.value    = [];
+        selfRows.value = [];
     } finally {
         loading.value = false;
     }
@@ -250,43 +336,77 @@ const csvCell = (v: unknown): string => {
 };
 
 const handleExport = () => {
-    if (rows.value.length === 0) return;
-    const headers = [
-        'ลำดับ', 'รอบปีการประเมิน', 'รอบการประเมิน',
-        'แผนก', 'ทีม', 'รหัสพนักงาน', 'ชื่อ-นามสกุล',
-        'ตำแหน่ง', 'ระดับ', 'แบบประเมิน',
-        'คะแนน KPI เฉลี่ย', 'คะแนน Competency เฉลี่ย', 'คะแนนรวมเฉลี่ย',
-        'คะแนนสรุป', 'เกรด', 'อนุมัติแล้ว',
-    ];
-    const lines = [headers.map(csvCell).join(',')];
-    rows.value.forEach((item, i) => {
-        lines.push([
-            i + 1,
-            item.year ?? '',
-            item.cycle_label ?? '',
-            item.department_name ?? '',
-            item.team_name ?? '',
-            item.emp_code ?? '',
-            item.employee_name ?? '',
-            item.position_name ?? '',
-            item.level_name ?? '',
-            item.assessment_name ?? '',
-            item.avg_kpi_score ?? '',
-            item.avg_competency_score ?? '',
-            item.avg_total_score ?? '',
-            item.final_total_score ?? '',
-            item.final_grade ?? '',
-            item.is_approved ? 'ใช่' : (item.is_approved === false ? 'ไม่' : ''),
-        ].map(csvCell).join(','));
-    });
+    let lines: string[];
+    const stamp = new Date().toISOString().slice(0, 10);
+    let filename: string;
 
-    const csv = '﻿' + lines.join('\r\n');
+    if (isManagerView.value) {
+        if (selfRows.value.length === 0) return;
+        const headers = [
+            'ลำดับ', 'รอบปีการประเมิน', 'รอบการประเมิน',
+            'ทีม', 'รหัสพนักงาน', 'ชื่อ-นามสกุล',
+            'ตำแหน่ง', 'ระดับ', 'แบบประเมิน',
+            'คะแนน KPI', 'คะแนน Competency', 'คะแนนรวม', 'เกรด', 'สถานะ',
+        ];
+        lines = [headers.map(csvCell).join(',')];
+        selfRows.value.forEach((item, i) => {
+            lines.push([
+                i + 1,
+                item.year ?? '',
+                item.cycle_label ?? '',
+                item.team_name ?? '',
+                item.emp_code ?? '',
+                item.employee_name ?? '',
+                item.position_name ?? '',
+                item.level_name ?? '',
+                item.assessment_name ?? '',
+                item.kpi_score ?? '',
+                item.competency_score ?? '',
+                item.total_score ?? '',
+                item.grade ?? '',
+                item.eval_status === 'sent' ? 'ส่งแล้ว' : 'ร่าง',
+            ].map(csvCell).join(','));
+        });
+        filename = `pms-self-eval-${stamp}.csv`;
+    } else {
+        if (rows.value.length === 0) return;
+        const headers = [
+            'ลำดับ', 'รอบปีการประเมิน', 'รอบการประเมิน',
+            'แผนก', 'ทีม', 'รหัสพนักงาน', 'ชื่อ-นามสกุล',
+            'ตำแหน่ง', 'ระดับ', 'แบบประเมิน',
+            'คะแนน KPI เฉลี่ย', 'คะแนน Competency เฉลี่ย', 'คะแนนรวมเฉลี่ย',
+            'คะแนนสรุป', 'เกรด', 'อนุมัติแล้ว',
+        ];
+        lines = [headers.map(csvCell).join(',')];
+        rows.value.forEach((item, i) => {
+            lines.push([
+                i + 1,
+                item.year ?? '',
+                item.cycle_label ?? '',
+                item.department_name ?? '',
+                item.team_name ?? '',
+                item.emp_code ?? '',
+                item.employee_name ?? '',
+                item.position_name ?? '',
+                item.level_name ?? '',
+                item.assessment_name ?? '',
+                item.avg_kpi_score ?? '',
+                item.avg_competency_score ?? '',
+                item.avg_total_score ?? '',
+                item.final_total_score ?? '',
+                item.final_grade ?? '',
+                item.is_approved ? 'ใช่' : (item.is_approved === false ? 'ไม่' : ''),
+            ].map(csvCell).join(','));
+        });
+        filename = `pms-reports-${stamp}.csv`;
+    }
+
+    const csv  = '﻿' + lines.join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const stamp = new Date().toISOString().slice(0, 10);
+    const a    = document.createElement('a');
     a.href = url;
-    a.download = `pms-reports-${stamp}.csv`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

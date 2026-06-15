@@ -460,7 +460,12 @@ const isOwnSend = ref(false);
 // param and takes precedence over the system role. This allows a manager
 // assigned as a peer/subordinate rater to submit with the correct role.
 const VALID_EVAL_ROLES: PmsEvaluationRole[] = ['self', 'manager', 'executive', 'ceo', 'peer', 'subordinate'];
+// Set by loadAll() after verifying the rater's actual role from DB.
+// Takes precedence over the URL param to prevent wrong sections when the
+// URL carries a stale/incorrect evaluator_role (e.g. manager assigned as peer).
+const confirmedEvalRole = ref<PmsEvaluationRole | null>(null);
 const evaluatorRole = computed<PmsEvaluationRole>(() => {
+    if (confirmedEvalRole.value) return confirmedEvalRole.value;
     const q = route.query.evaluator_role;
     if (typeof q === 'string' && (VALID_EVAL_ROLES as string[]).includes(q)) return q as PmsEvaluationRole;
     if (isManager.value)    return 'manager';
@@ -665,6 +670,35 @@ async function loadAll() {
             isOwnSend.value = me?.id != null && s.employee_id === me.id;
         } else {
             isOwnSend.value = false;
+        }
+
+        // For non-admin raters: confirm actual evaluator_role from DB to prevent
+        // wrong section display when the URL param is missing or incorrect
+        // (e.g. a manager-level user who was assigned as peer).
+        if (profile.value?.role !== 'admin' && user.value?.id) {
+            const { data: meRow } = await supabase
+                .from('pms_employees')
+                .select('id')
+                .eq('auth_user_id', user.value.id)
+                .maybeSingle();
+            if (meRow?.id) {
+                const { data: raterRow } = await supabase
+                    .from('pms_assessment_send_raters')
+                    .select('evaluator_role')
+                    .eq('send_id', sendId.value!)
+                    .eq('evaluator_employee_id', meRow.id)
+                    .eq('is_active', true)
+                    .maybeSingle();
+                if (raterRow) {
+                    const dbRole = raterRow.evaluator_role as PmsEvaluationRole;
+                    confirmedEvalRole.value = dbRole;
+                    if (dbRole === 'peer' || dbRole === 'subordinate')  userRole.value = 'officer';
+                    else if (dbRole === 'manager')                       userRole.value = 'manager';
+                    else if (dbRole === 'executive')                     userRole.value = 'executive';
+                    else if (dbRole === 'supervisor')                    userRole.value = 'supervisor';
+                    else                                                 userRole.value = 'officer';
+                }
+            }
         }
 
         // After 2026-05-22 schema change: a send carries cycle info only.

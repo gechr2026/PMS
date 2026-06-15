@@ -368,6 +368,8 @@ definePageMeta({ layout: 'pms-layout' });
 
 const route = useRoute();
 const summaryApi = usePmsSummary();
+const { profile } = useAuth();
+const MANAGER_VISIBLE_ROLES = new Set(['self', 'manager']);
 
 const sendId = computed<number | null>(() => {
     const v = route.query.send_id ?? route.query.id;
@@ -400,6 +402,7 @@ const raterColumns = computed<PmsSummaryRater[]>(() => {
         ...data.value.competencies.flatMap(c => c.by_rater),
     ];
     for (const r of allRaters) {
+        if (profile.value?.role === 'manager' && !MANAGER_VISIBLE_ROLES.has(r.evaluator_role)) continue;
         // Include rater employee id in the key so multiple peers/subordinates
         // each get their own column (rather than collapsing into one).
         const key = `${r.evaluator_role}:${r.evaluator_employee_id ?? ''}`;
@@ -507,7 +510,11 @@ interface PerRoleRow {
 
 const perRoleStats = computed<PerRoleRow[]>(() => {
     if (!data.value) return [];
-    return data.value.per_role.map(pr => {
+    let roles = data.value.per_role;
+    if (profile.value?.role === 'manager') {
+        roles = roles.filter(pr => MANAGER_VISIBLE_ROLES.has(pr.evaluator_role));
+    }
+    return roles.map(pr => {
         const kpi  = meanSelectedOption(data.value!.kpis,         pr.evaluator_role);
         const comp = meanSelectedOption(data.value!.competencies, pr.evaluator_role);
         // total = simple average of available means (mirrors existing "(kpi+comp)/2" pattern)

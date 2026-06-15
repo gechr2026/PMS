@@ -3,6 +3,42 @@
 // =============================================================
 import type { ListResponse } from './usePmsApi';
 
+/** Flat row returned from pms_self_eval_report RPC — one per (send, self-evaluator) */
+export interface PmsSelfEvalRow {
+    evaluation_id: number;
+    send_id: number;
+    eval_status: string | null;
+    submitted_at: string | null;
+    year_id: number | null;
+    cycle_id: number | null;
+    year: number | null;
+    cycle_label: string | null;
+    employee_id: number | null;
+    emp_code: string | null;
+    employee_name: string | null;
+    assessment_id: number | null;
+    assessment_name: string | null;
+    position_id: number | null;
+    position_name: string | null;
+    position_code: string | null;
+    level_id: number | null;
+    level_name: string | null;
+    team_id: number | null;
+    team_name: string | null;
+    department_id: number | null;
+    department_name: string | null;
+    kpi_score: number | null;
+    competency_score: number | null;
+    total_score: number | null;
+    grade: string | null;
+    recommendation: number | null;
+}
+
+export interface PmsSelfEvalListParams {
+    year_id?: number;
+    cycle_id?: number;
+}
+
 /** Flat row shape returned from pms_evaluation_results_v */
 export interface PmsReportRow {
     send_id: number;
@@ -70,5 +106,8 @@ export const usePmsReports = () => {
     const list = (params: PmsReportListParams = {}) =>
         request<ListResponse<PmsReportRow>>('/pms-reports', { query: params });
 
-    return { list };
+    const selfList = (params: PmsSelfEvalListParams = {}) =>
+        request<{ data: PmsSelfEvalRow[]; count: number }>('/pms-reports-self', { query: params });
+
+    return { list, selfList };
 };

@@ -73,12 +73,9 @@ export const usePmsSendRaters = () => {
         return data ?? [];
     };
 
-    /** Remove an assignment */
+    /** Remove an assignment and cascade-delete all evaluation data atomically */
     const remove = async (id: number) => {
-        const { error } = await supabase
-            .from('pms_assessment_send_raters')
-            .delete()
-            .eq('id', id);
+        const { error } = await supabase.rpc('pms_remove_send_rater', { p_rater_id: id });
         if (error) throw error;
     };
 

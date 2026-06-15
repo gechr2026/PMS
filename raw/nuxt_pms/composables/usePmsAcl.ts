@@ -16,10 +16,11 @@ export interface RouteAcl {
 export const ROUTE_ACL: RouteAcl[] = [
     { prefix: '/pms/settings',        roles: ['admin'] },
     { prefix: '/pms/reports',         roles: ['admin', 'executive', 'manager'] },
-    { prefix: '/pms/summary',         roles: ['admin', 'executive', 'manager', 'supervisor'] },
+    { prefix: '/pms/evaluation',      roles: ['admin', 'executive', 'manager'] },
+    { prefix: '/pms/summary',         roles: ['admin', 'executive', 'manager'] },
     { prefix: '/pms/report/tracking', roles: ['admin', 'executive', 'manager', 'supervisor'] },
     { prefix: '/pms/compare',         roles: ['admin', 'executive', 'manager', 'supervisor'] },
-    // Anything not listed (eg. '/', '/pms/assigned', '/pms/evaluation') is open to all authenticated roles.
+    // Anything not listed (eg. '/', '/pms/assigned') is open to all authenticated roles.
 ];
 
 // Cache the sorted-by-longest-prefix list so each canAccess() call doesn't re-sort.

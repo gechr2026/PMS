@@ -319,7 +319,7 @@ const fetchData = async () => {
         for (const s of res.data) {
             tagged.push({
                 send: s,
-                evaluatorRole: (s.my_rater_evaluator_role ?? evaluatorRoleForUser()) as PmsEvaluationRole,
+                evaluatorRole: (s.my_rater_evaluator_role ?? 'self') as PmsEvaluationRole,
             });
         }
 
