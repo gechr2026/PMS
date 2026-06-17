@@ -508,6 +508,8 @@ const allEvaluations = ref<PmsEvaluation[]>([]);
 /** The assessment this page is currently viewing (set by loadAll from URL or fallback) */
 const activeAssessmentId = ref<number | null>(null);
 const myEvalId       = ref<number | null>(null);
+/** Numeric pms_employees.id for the currently logged-in user (resolved in loadAll). */
+const myEmpId        = ref<number | null>(null);
 /** True when this evaluation is in 'sent' state — locked for non-admin editing. */
 const isSent         = ref(false);
 const managerRecommend = ref<number | null>(null);
@@ -537,12 +539,11 @@ const showToast    = ref(false);
 const toastMessage = ref('');
 
 // ── Helpers ─────────────────────────────────────────────────────────────
-function getEvalByRole(role: PmsEvaluationRole): PmsEvaluation | undefined {
-    // Scope to the active assessment, since a send can have multiple assessments
-    // and the same role can appear under each.
+function getEvalByRole(role: PmsEvaluationRole, empId?: number | null): PmsEvaluation | undefined {
     return allEvaluations.value.find(e =>
         e.evaluator_role === role &&
-        (activeAssessmentId.value === null || e.assessment_id === activeAssessmentId.value)
+        (activeAssessmentId.value === null || e.assessment_id === activeAssessmentId.value) &&
+        (empId == null || e.evaluator_employee_id === empId)
     );
 }
 
@@ -557,7 +558,7 @@ function statusLabel(status: string): string {
 }
 
 function applyMyEvaluationToRows() {
-    const myEval = getEvalByRole(evaluatorRole.value);
+    const myEval = getEvalByRole(evaluatorRole.value, myEmpId.value);
     // reset row selections first
     kpiRows.value.forEach(r => { r.selected = -1; r.closed = false; });
     competencyRows.value.forEach(r => { r.selected = -1; r.closed = false; });
@@ -607,30 +608,52 @@ function applyMyEvaluationToRows() {
 
 function applyManagerScoresForExecutive() {
     if (!isExecutive.value) return;
-    const mgrEval = getEvalByRole('manager');
-    if (!mgrEval) return;
 
-    const mgrKpiMap = new Map<number, number | null>();
-    for (const s of mgrEval.kpi_scores ?? []) mgrKpiMap.set(s.kpi_id, s.selected_option ?? null);
+    const mgrEvals = allEvaluations.value.filter(e =>
+        e.evaluator_role === 'manager' &&
+        (activeAssessmentId.value === null || e.assessment_id === activeAssessmentId.value)
+    );
+    if (mgrEvals.length === 0) return;
+
+    // KPI: average selected_option per kpi_id across all managers (skip 0 = N/A)
+    const kpiAgg = new Map<number, { sum: number; count: number }>();
+    for (const ev of mgrEvals) {
+        for (const s of ev.kpi_scores ?? []) {
+            if (s.selected_option != null && s.selected_option > 0) {
+                const a = kpiAgg.get(s.kpi_id) ?? { sum: 0, count: 0 };
+                kpiAgg.set(s.kpi_id, { sum: a.sum + s.selected_option, count: a.count + 1 });
+            }
+        }
+    }
     for (const row of kpiRows.value) {
-        const v = mgrKpiMap.get(row.kpi_id);
-        row.managerScore = v ?? '-';
-    }
-    const mgrCompMap = new Map<number, number | null>();
-    for (const s of mgrEval.competency_scores ?? []) mgrCompMap.set(s.competency_id, s.selected_option ?? null);
-    for (const row of competencyRows.value) {
-        const v = mgrCompMap.get(row.competency_id);
-        row.managerScore = v ?? '-';
+        const a = kpiAgg.get(row.kpi_id);
+        row.managerScore = a ? (a.sum / a.count).toFixed(2) : '-';
     }
 
-    if (mgrEval.recommendation && proposals.value.length === 0) {
-        proposals.value = [{
-            proposer: mgrEval.evaluator_employee_id ? `Employee #${mgrEval.evaluator_employee_id}` : 'Manager',
-            position: 'Manager',
-            content: recommendOptions[(mgrEval.recommendation - 1)] ?? '-',
-            date: mgrEval.submitted_at?.slice(0, 10) ?? '',
-        }];
+    // Competency: same aggregation
+    const compAgg = new Map<number, { sum: number; count: number }>();
+    for (const ev of mgrEvals) {
+        for (const s of ev.competency_scores ?? []) {
+            if (s.selected_option != null && s.selected_option > 0) {
+                const a = compAgg.get(s.competency_id) ?? { sum: 0, count: 0 };
+                compAgg.set(s.competency_id, { sum: a.sum + s.selected_option, count: a.count + 1 });
+            }
+        }
     }
+    for (const row of competencyRows.value) {
+        const a = compAgg.get(row.competency_id);
+        row.managerScore = a ? (a.sum / a.count).toFixed(2) : '-';
+    }
+
+    // Proposals: one row per manager that has a recommendation
+    proposals.value = mgrEvals
+        .filter(ev => ev.recommendation != null)
+        .map(ev => ({
+            proposer: ev.evaluator?.full_name ?? (ev.evaluator_employee_id ? `Manager #${ev.evaluator_employee_id}` : 'Manager'),
+            position: 'Manager',
+            content: recommendOptions[(ev.recommendation! - 1)] ?? '-',
+            date: ev.submitted_at?.slice(0, 10) ?? '',
+        }));
 }
 
 // ── Load all ────────────────────────────────────────────────────────────
@@ -681,6 +704,7 @@ async function loadAll() {
                 .select('id')
                 .eq('auth_user_id', user.value.id)
                 .maybeSingle();
+            myEmpId.value = meRow?.id ?? null;
             if (meRow?.id) {
                 const { data: raterRow } = await supabase
                     .from('pms_assessment_send_raters')
@@ -788,7 +812,7 @@ async function loadAll() {
         }
 
         applyMyEvaluationToRows();
-        assessment.status = statusLabel(getEvalByRole(evaluatorRole.value)?.status ?? '');
+        assessment.status = statusLabel(getEvalByRole(evaluatorRole.value, myEmpId.value)?.status ?? '');
         applyManagerScoresForExecutive();
     } catch (e) {
         serverError.value = (e as PmsApiError).message || 'โหลดข้อมูลไม่สำเร็จ';

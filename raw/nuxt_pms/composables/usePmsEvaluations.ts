@@ -71,6 +71,7 @@ export interface PmsEvaluation {
     send_id: number;
     evaluator_role: PmsEvaluationRole;
     evaluator_employee_id: number | null;
+    evaluator?: { emp_code: string | null; full_name: string | null } | null;
     /** Which assessment this evaluation is for (added 2026-05-22) */
     assessment_id: number;
     status: PmsEvaluationStatus;
