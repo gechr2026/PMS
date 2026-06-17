@@ -13,54 +13,9 @@
             <h1 class="text-lg font-bold text-gray-800">เปรียบเทียบผลการประเมิน</h1>
         </div>
 
-        <!-- Filter Card with Employee Picker -->
+        <!-- Filter Card -->
         <div class="mb-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2" style="max-width: 720px;">
-                <!-- Employee Picker (autocomplete) -->
-                <div class="relative">
-                    <label class="mb-1.5 block text-sm font-semibold text-gray-700">
-                        พนักงาน <span class="text-red-500">*</span>
-                    </label>
-                    <input
-                        v-model="empSearch"
-                        type="text"
-                        placeholder="ค้นหา รหัสพนักงาน หรือ ชื่อ-นามสกุล"
-                        autocomplete="off"
-                        class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
-                        @input="onEmpInput"
-                        @focus="onEmpFocus"
-                        @blur="onEmpBlur"
-                    />
-                    <!-- Dropdown -->
-                    <div
-                        v-if="showDropdown && (suggestions.length > 0 || pickerLoading)"
-                        class="absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
-                    >
-                        <div v-if="pickerLoading" class="px-3 py-2 text-xs text-gray-400 inline-flex items-center gap-2">
-                            <svg class="animate-spin h-3 w-3 text-blue-500" viewBox="0 0 24 24" fill="none">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
-                                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                            </svg>
-                            กำลังค้นหา...
-                        </div>
-                        <button
-                            v-for="emp in suggestions"
-                            :key="emp.id"
-                            type="button"
-                            class="block w-full px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-blue-50"
-                            @mousedown.prevent="selectEmployee(emp)"
-                        >
-                            <div class="flex items-center gap-2">
-                                <span class="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-700">{{ emp.emp_code || '—' }}</span>
-                                <span class="font-medium text-gray-800">{{ emp.full_name || '—' }}</span>
-                            </div>
-                            <div class="mt-0.5 text-xs text-gray-500">
-                                {{ emp.position_name || '—' }} · {{ emp.team_name || '—' }} · {{ emp.department_name || '—' }}
-                            </div>
-                        </button>
-                    </div>
-                </div>
-
+            <div style="max-width: 360px;">
                 <!-- Year filter -->
                 <div>
                     <label class="mb-1.5 block text-sm font-semibold text-gray-700">รอบปีการประเมิน</label>
@@ -74,8 +29,15 @@
                 </div>
             </div>
 
-            <!-- Selected employee chip + actions -->
-            <div v-if="selectedEmployee" class="mt-4 flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-4 py-2.5">
+            <!-- Current user chip (read-only) -->
+            <div v-if="resolving" class="mt-4 flex items-center gap-2 text-sm text-gray-400">
+                <svg class="animate-spin h-4 w-4 text-blue-400" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                กำลังโหลดข้อมูลพนักงาน...
+            </div>
+            <div v-else-if="selectedEmployee" class="mt-4 flex items-center rounded-lg border border-blue-100 bg-blue-50 px-4 py-2.5">
                 <div class="flex items-center gap-3 text-sm">
                     <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2">
@@ -93,11 +55,6 @@
                         </div>
                     </div>
                 </div>
-                <button
-                    type="button"
-                    class="text-xs text-gray-500 transition hover:text-red-500"
-                    @click="clearSelection"
-                >ล้าง ×</button>
             </div>
         </div>
 
@@ -124,7 +81,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-if="loading">
+                        <tr v-if="loading || resolving">
                             <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-400">
                                 <div class="inline-flex items-center gap-2">
                                     <svg class="animate-spin h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none">
@@ -133,11 +90,6 @@
                                     </svg>
                                     กำลังโหลดข้อมูล...
                                 </div>
-                            </td>
-                        </tr>
-                        <tr v-else-if="!selectedEmployee">
-                            <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-400">
-                                เลือกพนักงานเพื่อดูข้อมูลเปรียบเทียบ
                             </td>
                         </tr>
                         <tr v-else-if="filteredRows.length === 0">
@@ -191,68 +143,24 @@ import type { PmsYear } from '@/composables/usePmsYears';
 useHead({ title: 'เปรียบเทียบผลการประเมิน | ระบบประเมินผลการปฏิบัติงาน' });
 definePageMeta({ layout: 'pms-layout' });
 
-const compareApi = usePmsCompare();
-const yearsApi   = usePmsYears();
+const { profile }  = useAuth();
+const compareApi   = usePmsCompare();
+const yearsApi     = usePmsYears();
 
-// ── Picker state ────────────────────────────────────────────────────────
-const empSearch     = ref('');
-const suggestions   = ref<PmsComparePickerEmployee[]>([]);
-const pickerLoading = ref(false);
-const showDropdown  = ref(false);
 const selectedEmployee = ref<PmsComparePickerEmployee | null>(null);
+const resolving        = ref(false);
 
-// debounce timer
-let pickerTimer: ReturnType<typeof setTimeout> | null = null;
-
-const fetchSuggestions = async (q: string) => {
-    pickerLoading.value = true;
-    try {
-        const res = await compareApi.searchEmployees({ q, limit: 10, active: true });
-        suggestions.value = res.data;
-    } catch (e) {
-        console.warn('[compare] picker search failed', e);
-        suggestions.value = [];
-    } finally {
-        pickerLoading.value = false;
-    }
-};
-
-const onEmpInput = () => {
-    showDropdown.value = true;
-    if (pickerTimer) clearTimeout(pickerTimer);
-    const q = empSearch.value.trim();
-    pickerTimer = setTimeout(() => {
-        fetchSuggestions(q);
-    }, 200);
-};
-
-const onEmpFocus = () => {
-    showDropdown.value = true;
-    if (suggestions.value.length === 0) fetchSuggestions(empSearch.value.trim());
-};
-
-const onEmpBlur = () => {
-    // Allow click-on-suggestion to register first via @mousedown.prevent
-    setTimeout(() => { showDropdown.value = false; }, 150);
-};
-
-const selectEmployee = async (emp: PmsComparePickerEmployee) => {
-    selectedEmployee.value = emp;
-    empSearch.value        = `${emp.emp_code ?? ''} — ${emp.full_name ?? ''}`;
-    suggestions.value      = [];
-    showDropdown.value     = false;
-    await loadCompare();
-};
-
-const clearSelection = () => {
-    selectedEmployee.value = null;
-    empSearch.value        = '';
-    rows.value             = [];
-};
-
-// ── Year filter ─────────────────────────────────────────────────────────
 const yearOptions = ref<PmsYear[]>([]);
 const filterYear  = ref<string>('');
+
+const rows         = ref<PmsCompareRow[]>([]);
+const loading      = ref(false);
+const errorMessage = ref('');
+
+const filteredRows = computed(() => {
+    if (!filterYear.value) return rows.value;
+    return rows.value.filter(r => String(r.year) === filterYear.value);
+});
 
 const fetchYears = async () => {
     try {
@@ -263,11 +171,6 @@ const fetchYears = async () => {
     }
 };
 
-// ── Comparison data ─────────────────────────────────────────────────────
-const rows         = ref<PmsCompareRow[]>([]);
-const loading      = ref(false);
-const errorMessage = ref('');
-
 const loadCompare = async () => {
     if (!selectedEmployee.value) return;
     loading.value = true;
@@ -276,22 +179,39 @@ const loadCompare = async () => {
         const res = await compareApi.get(selectedEmployee.value.id, { limit: 200 });
         rows.value = res.data;
     } catch (e) {
-        const err = e as PmsApiError;
-        errorMessage.value = err.status === 404
+        const apiErr = e as PmsApiError;
+        errorMessage.value = apiErr.status === 404
             ? 'ไม่พบข้อมูลพนักงานที่เลือก'
-            : (err.message || 'โหลดข้อมูลเปรียบเทียบไม่สำเร็จ');
+            : (apiErr.message || 'โหลดข้อมูลเปรียบเทียบไม่สำเร็จ');
         rows.value = [];
     } finally {
         loading.value = false;
     }
 };
 
-const filteredRows = computed(() => {
-    if (!filterYear.value) return rows.value;
-    return rows.value.filter(r => String(r.year) === filterYear.value);
-});
+const resolveSelf = async () => {
+    const username = profile.value?.username;
+    if (!username) {
+        errorMessage.value = 'ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่';
+        return;
+    }
+    resolving.value = true;
+    try {
+        const res = await compareApi.searchEmployees({ q: username, limit: 1 });
+        const emp = res.data[0];
+        if (!emp) {
+            errorMessage.value = 'ไม่พบข้อมูลพนักงาน กรุณาติดต่อผู้ดูแลระบบ';
+            return;
+        }
+        selectedEmployee.value = emp;
+        await loadCompare();
+    } catch (e) {
+        errorMessage.value = (e as PmsApiError).message || 'ไม่สามารถโหลดข้อมูลได้';
+    } finally {
+        resolving.value = false;
+    }
+};
 
-// ── Helpers ─────────────────────────────────────────────────────────────
 const formatScore = (n: number | null | undefined): string => {
     if (n === null || n === undefined) return '—';
     return Number(n).toFixed(2);
@@ -310,7 +230,8 @@ const gradeClass = (grade: string | null) => {
     return map[grade] ?? 'bg-gray-100 text-gray-600';
 };
 
-onMounted(() => {
-    fetchYears();
+onMounted(async () => {
+    await fetchYears();
+    await resolveSelf();
 });
 </script>
