@@ -11,6 +11,7 @@ export interface PmsEmployee {
     full_name: string;
     position_id: number;
     level_id: number | null;
+    supervisor_id: number | null;
     auth_user_id: string | null;
     is_active: boolean;
     /** Joined fields (added by edge function) */
@@ -24,6 +25,8 @@ export interface PmsEmployee {
     department_code: string | null;
     level_name: string | null;
     level_sort_order: number | null;
+    supervisor_name: string | null;
+    supervisor_emp_code: string | null;
     created_at: string;
     updated_at: string;
     created_by: string | null;
@@ -55,6 +58,7 @@ export interface PmsEmployeeCreateBody {
     position_id: number;
     national_id?: string | null;
     level_id?: number | null;
+    supervisor_id?: number | null;
     auth_user_id?: string | null;
     is_active?: boolean;
 }

@@ -190,6 +190,66 @@
                     </div>
                 </div>
 
+                <!-- ── Section 3: ผู้บังคับบัญชา ── -->
+                <div class="mb-6 border-t border-gray-100 pt-6">
+                    <div class="mb-4 flex items-center gap-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8">
+                            <line x1="3" y1="6"  x2="21" y2="6"  stroke-linecap="round"/>
+                            <line x1="3" y1="12" x2="21" y2="12" stroke-linecap="round"/>
+                            <line x1="3" y1="18" x2="21" y2="18" stroke-linecap="round"/>
+                        </svg>
+                        <span class="text-sm font-bold text-gray-700">ผู้บังคับบัญชา</span>
+                    </div>
+
+                    <div class="relative" @focusout="onSupervisorBlur">
+                        <label class="mb-1.5 block text-sm font-semibold text-gray-700">ผู้บังคับบัญชา</label>
+                        <div class="relative">
+                            <input
+                                v-model="supervisorSearch"
+                                type="text"
+                                placeholder="พิมพ์ชื่อหรือรหัสพนักงาน (ไม่บังคับ)"
+                                autocomplete="off"
+                                class="w-full rounded-lg border border-gray-200 px-3 py-2 pr-8 text-sm text-gray-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+                                @focus="showSupervisorDrop = true"
+                                @input="showSupervisorDrop = true"
+                            />
+                            <button
+                                v-if="form.supervisor_id !== null"
+                                type="button"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                title="ล้าง"
+                                @mousedown.prevent="clearSupervisor"
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Dropdown list -->
+                        <div
+                            v-if="showSupervisorDrop && filteredSupervisors.length > 0"
+                            class="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+                        >
+                            <button
+                                v-for="emp in filteredSupervisors"
+                                :key="emp.id"
+                                type="button"
+                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-blue-50 transition"
+                                :class="form.supervisor_id === emp.id ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-700'"
+                                @mousedown.prevent="selectSupervisor(emp)"
+                            >
+                                <span class="font-mono text-xs text-gray-500 w-16 shrink-0">{{ emp.emp_code }}</span>
+                                <span class="truncate">{{ emp.full_name }}</span>
+                                <span v-if="emp.position_name" class="ml-auto shrink-0 text-xs text-gray-400">{{ emp.position_name }}</span>
+                            </button>
+                        </div>
+                        <p v-if="showSupervisorDrop && supervisorSearch && filteredSupervisors.length === 0" class="mt-1 text-xs text-gray-400">
+                            ไม่พบพนักงานที่ตรงกัน
+                        </p>
+                    </div>
+                </div>
+
                 <!-- Server error -->
                 <div
                     v-if="serverError"
@@ -253,6 +313,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { PmsApiError } from '@/composables/usePmsApi';
+import type { PmsEmployee } from '@/composables/usePmsEmployees';
 import type { PmsDepartment } from '@/composables/usePmsDepartments';
 import type { PmsTeam } from '@/composables/usePmsTeams';
 import type { PmsPosition } from '@/composables/usePmsPositions';
@@ -283,10 +344,41 @@ useHead({
 definePageMeta({ layout: 'pms-layout' });
 
 // ── Master data (loaded from API) ──────────────────────────────────────
-const deptOptions     = ref<PmsDepartment[]>([]);
-const teamOptions     = ref<PmsTeam[]>([]);
-const positionOptions = ref<PmsPosition[]>([]);
-const levelOptions    = ref<PmsLevel[]>([]);
+const deptOptions      = ref<PmsDepartment[]>([]);
+const teamOptions      = ref<PmsTeam[]>([]);
+const positionOptions  = ref<PmsPosition[]>([]);
+const levelOptions     = ref<PmsLevel[]>([]);
+const employeeOptions  = ref<PmsEmployee[]>([]);
+
+// ── Supervisor combobox ────────────────────────────────────────────────
+const supervisorSearch   = ref('');
+const showSupervisorDrop = ref(false);
+
+const filteredSupervisors = computed(() => {
+    const q   = supervisorSearch.value.trim().toLowerCase();
+    const self = editId.value;
+    const list = employeeOptions.value.filter(e => e.id !== self && e.is_active);
+    if (!q) return list.slice(0, 50);
+    return list.filter(e =>
+        e.full_name.toLowerCase().includes(q) ||
+        e.emp_code.toLowerCase().includes(q)
+    ).slice(0, 50);
+});
+
+const selectSupervisor = (emp: PmsEmployee) => {
+    form.supervisor_id    = emp.id;
+    supervisorSearch.value = `${emp.emp_code} — ${emp.full_name}`;
+    showSupervisorDrop.value = false;
+};
+const clearSupervisor = () => {
+    form.supervisor_id    = null;
+    supervisorSearch.value = '';
+    showSupervisorDrop.value = false;
+};
+const onSupervisorBlur = (e: FocusEvent) => {
+    const related = (e.relatedTarget as HTMLElement | null);
+    if (!related) showSupervisorDrop.value = false;
+};
 
 // ── Reactive form ──────────────────────────────────────────────────────
 interface FormState {
@@ -298,6 +390,7 @@ interface FormState {
     team_id: number | null;
     position_id: number | null;
     level_id: number | null;
+    supervisor_id: number | null;
     is_active: boolean;
 }
 const form = reactive<FormState>({
@@ -309,6 +402,7 @@ const form = reactive<FormState>({
     team_id:       null,
     position_id:   null,
     level_id:      null,
+    supervisor_id: null,
     is_active:     true,
 });
 
@@ -372,13 +466,14 @@ const handleSubmit = async () => {
     submitting.value = true;
     try {
         const body = {
-            username:    form.username.trim(),
-            emp_code:    form.empCode.trim(),
-            full_name:   form.fullName.trim(),
-            national_id: form.nationalId.trim() || null,
-            position_id: form.position_id as number,
-            level_id:    form.level_id ?? null,
-            is_active:   form.is_active,
+            username:     form.username.trim(),
+            emp_code:     form.empCode.trim(),
+            full_name:    form.fullName.trim(),
+            national_id:  form.nationalId.trim() || null,
+            position_id:  form.position_id as number,
+            level_id:     form.level_id ?? null,
+            supervisor_id: form.supervisor_id ?? null,
+            is_active:    form.is_active,
         };
         if (isEditMode.value && editId.value !== null) {
             await employeesApi.update(editId.value, body);
@@ -400,7 +495,8 @@ const handleSubmit = async () => {
 const handleClear = () => {
     form.username = ''; form.empCode = ''; form.nationalId = ''; form.fullName = '';
     form.department_id = null; form.team_id = null; form.position_id = null;
-    form.level_id = null; form.is_active = true;
+    form.level_id = null; form.supervisor_id = null; form.is_active = true;
+    supervisorSearch.value = '';
     Object.keys(errors).forEach(k => (errors as any)[k] = '');
     serverError.value = '';
 };
@@ -408,16 +504,18 @@ const handleClear = () => {
 onMounted(async () => {
     // Load all master data in parallel
     try {
-        const [d, t, p, l] = await Promise.all([
+        const [d, t, p, l, emp] = await Promise.all([
             deptsApi.list({ limit: 200 }),
             teamsApi.list({ limit: 500 }),
             positionsApi.list({ limit: 500 }),
             levelsApi.list({ limit: 100 }),
+            employeesApi.list({ limit: 500, is_active: true }),
         ]);
-        deptOptions.value     = d.data;
-        teamOptions.value     = t.data;
-        positionOptions.value = p.data;
-        levelOptions.value    = l.data;
+        deptOptions.value      = d.data;
+        teamOptions.value      = t.data;
+        positionOptions.value  = p.data;
+        levelOptions.value     = l.data;
+        employeeOptions.value  = emp.data;
     } catch (e) {
         console.warn('[employee/add] failed to load masters', e);
     }
@@ -435,7 +533,11 @@ onMounted(async () => {
             form.team_id       = e.team_id;
             form.position_id   = e.position_id;
             form.level_id      = e.level_id;
+            form.supervisor_id = e.supervisor_id;
             form.is_active     = e.is_active;
+            if (e.supervisor_id && e.supervisor_emp_code && e.supervisor_name) {
+                supervisorSearch.value = `${e.supervisor_emp_code} — ${e.supervisor_name}`;
+            }
         } catch (e) {
             serverError.value = (e as PmsApiError).message || 'โหลดข้อมูลไม่สำเร็จ';
         }
