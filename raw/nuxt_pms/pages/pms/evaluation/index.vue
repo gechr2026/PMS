@@ -51,6 +51,7 @@
                         <tr class="border-b border-gray-200 bg-gray-50">
                             <th class="w-14 px-4 py-3 text-center font-semibold text-gray-700">ลำดับ</th>
                             <th class="px-4 py-3 text-left font-semibold text-gray-700">ชื่อแบบประเมิน</th>
+                            <th class="w-44 px-4 py-3 text-left font-semibold text-gray-700">ผู้ถูกประเมิน</th>
                             <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">รอบปีการประเมิน</th>
                             <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">รอบการประเมิน</th>
                             <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">คะแนนที่ได้</th>
@@ -60,7 +61,7 @@
                     </thead>
                     <tbody>
                         <tr v-if="loading">
-                            <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">
+                            <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-400">
                                 <div class="inline-flex items-center gap-2">
                                     <svg class="animate-spin h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none">
                                         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
@@ -71,7 +72,7 @@
                             </td>
                         </tr>
                         <tr v-else-if="rows.length === 0">
-                            <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
+                            <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
                         </tr>
                         <tr
                             v-else
@@ -81,6 +82,12 @@
                         >
                             <td class="px-4 py-3 text-center text-gray-600">{{ index + 1 }}</td>
                             <td class="px-4 py-3 font-medium text-gray-800">{{ item.assessment_name }}</td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-1.5">
+                                    <span v-if="item.emp_code" class="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-700">{{ item.emp_code }}</span>
+                                    <span class="text-sm text-gray-800">{{ item.employee_name || '—' }}</span>
+                                </div>
+                            </td>
                             <td class="px-4 py-3 text-center text-gray-600">{{ item.year }}</td>
                             <td class="px-4 py-3 text-center text-gray-600">{{ item.cycle_label }}</td>
                             <td class="px-4 py-3 text-center font-semibold text-gray-800">

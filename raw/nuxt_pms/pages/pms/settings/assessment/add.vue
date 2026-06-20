@@ -120,12 +120,8 @@
                         </div>
                     </div>
 
-                    <!-- ระดับตำแหน่ง (auto) + ทีม (auto) + แผนก (auto) -->
-                    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div>
-                            <label class="mb-1.5 block text-sm font-semibold text-gray-700">ระดับตำแหน่ง</label>
-                            <input :value="autoInfo.level" type="text" readonly class="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-500 outline-none cursor-not-allowed" />
-                        </div>
+                    <!-- ทีม (auto) + แผนก (auto) -->
+                    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label class="mb-1.5 block text-sm font-semibold text-gray-700">ทีม</label>
                             <input :value="autoInfo.team" type="text" readonly class="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-500 outline-none cursor-not-allowed" />

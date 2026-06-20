@@ -133,10 +133,7 @@
                             <td class="px-4 py-3 text-center text-gray-600">{{ item.year }}</td>
                             <td class="px-4 py-3 text-center text-gray-600">{{ item.cycle_label }}</td>
                             <td class="px-4 py-3 text-center text-gray-600">{{ item.emp_code }}</td>
-                            <td class="px-4 py-3 text-center text-gray-800">
-                                <div>{{ item.full_name }}</div>
-                                <span class="inline-block mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" :class="statusBadgeClass(item.status)">{{ item.status }}</span>
-                            </td>
+                            <td class="px-4 py-3 text-center text-gray-800">{{ item.full_name }}</td>
                             <td class="px-4 py-3 text-gray-800">
                                 <div v-if="item.assessment_count === 0" class="text-xs text-gray-400">—</div>
                                 <div v-else-if="item.assessment_count === 1">{{ item.primary_assessment_name }}</div>
@@ -147,17 +144,6 @@
                             </td>
                             <td class="px-4 py-3 text-center">
                                 <div class="flex items-center justify-center gap-1.5">
-                                    <button
-                                        v-if="item.status === 'pending'"
-                                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-green-200 text-green-600 transition hover:bg-green-50 disabled:opacity-50"
-                                        title="ส่งแบบประเมิน"
-                                        :disabled="actionId === item.id"
-                                        @click="sendNow(item)"
-                                    >
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                            <polygon points="22 3 2 10 11 13 14 22 22 3" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                    </button>
                                     <NuxtLink
                                         :to="`/pms/settings/send/add?id=${item.id}`"
                                         class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 text-blue-500 transition hover:bg-blue-50"
@@ -218,7 +204,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { PmsApiError } from '@/composables/usePmsApi';
-import type { PmsSend, PmsSendStatus } from '@/composables/usePmsSends';
+import type { PmsSend } from '@/composables/usePmsSends';
 import type { PmsYear } from '@/composables/usePmsYears';
 import type { PmsCycle } from '@/composables/usePmsCycles';
 import type { PmsDepartment } from '@/composables/usePmsDepartments';
@@ -244,7 +230,6 @@ const positionOptions = ref<PmsPosition[]>([]);
 
 const loading      = ref(false);
 const deleting     = ref(false);
-const actionId     = ref<number | null>(null);
 const errorMessage = ref('');
 
 const searchYear     = ref('');
@@ -319,34 +304,6 @@ const handleClear  = () => {
     fetchList();
 };
 
-const statusBadgeClass = (s: PmsSendStatus): string => {
-    switch (s) {
-        case 'pending':     return 'bg-gray-100 text-gray-600';
-        case 'sent':        return 'bg-blue-100 text-blue-700';
-        case 'opened':      return 'bg-cyan-100 text-cyan-700';
-        case 'in_progress': return 'bg-yellow-100 text-yellow-700';
-        case 'completed':   return 'bg-green-100 text-green-700';
-        case 'cancelled':   return 'bg-red-100 text-red-700';
-        default:            return 'bg-gray-100 text-gray-600';
-    }
-};
-
-const sendNow = async (item: PmsSend) => {
-    actionId.value = item.id;
-    errorMessage.value = '';
-    try {
-        const res = await sendsApi.sendNow(item.id);
-        const idx = sendList.value.findIndex(s => s.id === item.id);
-        if (idx >= 0) sendList.value[idx] = res.data;
-    } catch (e) {
-        const err = e as PmsApiError;
-        errorMessage.value = err.status === 403
-            ? 'ไม่มีสิทธิ์ส่งแบบประเมิน'
-            : (err.message || 'ส่งไม่สำเร็จ');
-    } finally {
-        actionId.value = null;
-    }
-};
 
 // Delete
 const showDeleteModal = ref(false);

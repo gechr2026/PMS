@@ -207,9 +207,12 @@
                                 <th class="px-4 py-2.5 text-left font-semibold text-gray-700">รายละเอียด</th>
                                 <th
                                     v-for="rater in raterColumns" :key="`${rater.evaluator_role}:${rater.evaluator_employee_id ?? ''}`"
-                                    class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700 whitespace-pre-line"
-                                    :title="rater.evaluator_full_name ?? ''"
-                                >{{ raterLabel(rater) }}</th>
+                                    class="w-28 px-3 py-2.5 text-center font-semibold text-gray-700"
+                                >
+                                    <div class="text-xs font-bold text-gray-700">{{ ROLE_LABEL[rater.evaluator_role] ?? rater.evaluator_role }}</div>
+                                    <div v-if="rater.evaluator_emp_code" class="mt-1 inline-block rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-700">{{ rater.evaluator_emp_code }}</div>
+                                    <div v-if="rater.evaluator_full_name" class="mt-0.5 mx-auto w-24 truncate text-xs font-normal text-gray-500">{{ rater.evaluator_full_name }}</div>
+                                </th>
                                 <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700" title="ค่าเฉลี่ยเฉพาะหัวหน้า + ผู้บริหาร (ไม่รวมตนเอง)">เฉลี่ย</th>
                                 <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700">น้ำหนัก</th>
                                 <th class="w-24 px-3 py-2.5 text-center font-semibold text-gray-700" title="เฉลี่ย × น้ำหนัก">คะแนนที่ได้</th>
@@ -265,9 +268,12 @@
                                 <th class="w-44 px-4 py-2.5 text-left font-semibold text-gray-700">หัวข้อ</th>
                                 <th
                                     v-for="rater in raterColumns" :key="`${rater.evaluator_role}:${rater.evaluator_employee_id ?? ''}`"
-                                    class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700 whitespace-pre-line"
-                                    :title="rater.evaluator_full_name ?? ''"
-                                >{{ raterLabel(rater) }}</th>
+                                    class="w-28 px-3 py-2.5 text-center font-semibold text-gray-700"
+                                >
+                                    <div class="text-xs font-bold text-gray-700">{{ ROLE_LABEL[rater.evaluator_role] ?? rater.evaluator_role }}</div>
+                                    <div v-if="rater.evaluator_emp_code" class="mt-1 inline-block rounded bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-700">{{ rater.evaluator_emp_code }}</div>
+                                    <div v-if="rater.evaluator_full_name" class="mt-0.5 mx-auto w-24 truncate text-xs font-normal text-gray-500">{{ rater.evaluator_full_name }}</div>
+                                </th>
                                 <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700" title="ค่าเฉลี่ยเฉพาะหัวหน้า + ผู้บริหาร (ไม่รวมตนเอง)">เฉลี่ย</th>
                                 <th class="w-20 px-3 py-2.5 text-center font-semibold text-gray-700">น้ำหนัก</th>
                                 <th class="w-24 px-3 py-2.5 text-center font-semibold text-gray-700" title="เฉลี่ย × น้ำหนัก">คะแนนที่ได้</th>

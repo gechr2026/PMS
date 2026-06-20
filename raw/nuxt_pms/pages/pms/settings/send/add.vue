@@ -428,6 +428,7 @@ import type { PmsEvaluationRole } from '@/composables/usePmsEvaluations';
 
 const router = useRouter();
 const route  = useRoute();
+const { request }    = usePmsApi();
 const sendsApi       = usePmsSends();
 const employeesApi   = usePmsEmployees();
 const assessmentsApi = usePmsAssessments();
@@ -708,6 +709,13 @@ const sendRater = async (idx: number) => {
         await sendRatersApi.markNotified(row.rater_id!);
         row.isSent = true;
 
+        // Send email notification — non-blocking: email failure shows warning but does not revert notified status
+        try {
+            await sendEmailToRater(row);
+        } catch (emailErr) {
+            serverError.value = 'ส่งแบบประเมินสำเร็จ แต่ส่ง email ไม่สำเร็จ: ' + ((emailErr as Error).message || 'SMTP error');
+        }
+
         showRaterToast.value = true;
         setTimeout(() => { showRaterToast.value = false; }, 1500);
     } catch (e) {
@@ -715,6 +723,62 @@ const sendRater = async (idx: number) => {
     } finally {
         delete sendingRaterIdxs[idx];
     }
+};
+
+// ── Email notification after send ────────────────────────────────────
+const sendEmailToRater = async (row: EvaluatorRow): Promise<void> => {
+    const raterEmp = employeeMaster.value.find(e => e.id === row.evaluator_employee_id);
+    const toEmail = raterEmp?.username ?? '';
+    if (!toEmail.includes('@')) return; // username ไม่ใช่ email → ข้าม
+
+    const raterName      = raterEmp?.full_name ?? toEmail;
+    const assessmentName = allAssessments.value.find(a => a.id === row.assessment_id)?.name ?? '—';
+    const roleName       = ALL_ROLES.find(r => r.value === row.evaluator_role)?.label ?? row.evaluator_role;
+    const cycleLabel     = cycleOptions.value.find(c => c.id === form.cycle_id)?.cycle_label ?? '—';
+    const appUrl         = typeof window !== 'undefined' ? window.location.origin : '';
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#4361ee,#5b9bd5);border-radius:12px;padding:24px;color:white;margin-bottom:24px;">
+    <h1 style="margin:0;font-size:20px;">แจ้งเตือน: งานประเมินผลการปฏิบัติงาน</h1>
+    <p style="margin:8px 0 0;opacity:.9;font-size:14px;">Performance Management System</p>
+  </div>
+  <p>เรียน คุณ ${raterName}</p>
+  <p>คุณได้รับมอบหมายให้ประเมินผลการปฏิบัติงานของพนักงาน กรุณาดำเนินการให้แล้วเสร็จตามกำหนด</p>
+  <table style="width:100%;border-collapse:collapse;margin:16px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+    <tr style="background:#f8fafc;">
+      <td style="padding:10px 16px;font-weight:600;color:#6b7280;width:40%;border-bottom:1px solid #e5e7eb;">ผู้ถูกประเมิน</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #e5e7eb;">${employeeInfo.empCode} — ${employeeInfo.fullName}</td>
+    </tr>
+    <tr>
+      <td style="padding:10px 16px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">บทบาทของท่าน</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #e5e7eb;">${roleName}</td>
+    </tr>
+    <tr style="background:#f8fafc;">
+      <td style="padding:10px 16px;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;">แบบประเมิน</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #e5e7eb;">${assessmentName}</td>
+    </tr>
+    <tr>
+      <td style="padding:10px 16px;font-weight:600;color:#6b7280;">รอบการประเมิน</td>
+      <td style="padding:10px 16px;">${cycleLabel} (ปี ${cycleInfo.year})</td>
+    </tr>
+  </table>
+  <div style="text-align:center;margin:28px 0;">
+    <a href="${appUrl}/pms/assigned"
+       style="background:#4361ee;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">
+      เข้าสู่ระบบเพื่อประเมิน
+    </a>
+  </div>
+  <p style="font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:16px;margin-top:24px;">
+    อีเมลนี้ส่งโดยอัตโนมัติจากระบบ Performance Management System กรุณาอย่าตอบกลับ
+  </p>
+</body></html>`;
+
+    await request('/send-email', {
+        method: 'POST',
+        body: { to: toEmail, subject: 'PMS - Evaluation Assignment Notification', html },
+    });
 };
 
 // ── Send all saved-draft raters at once ───────────────────────────────

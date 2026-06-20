@@ -19,7 +19,7 @@ export const ROUTE_ACL: RouteAcl[] = [
     { prefix: '/pms/evaluation',      roles: ['admin', 'executive', 'manager'] },
     { prefix: '/pms/summary',         roles: ['admin', 'executive', 'manager'] },
     { prefix: '/pms/report/tracking', roles: ['admin', 'executive', 'manager', 'supervisor'] },
-    { prefix: '/pms/compare',         roles: ['admin', 'executive', 'manager', 'supervisor'] },
+    { prefix: '/pms/compare',         roles: ['admin', 'executive', 'manager', 'supervisor', 'officer'] },
     // Anything not listed (eg. '/', '/pms/assigned') is open to all authenticated roles.
 ];
 
