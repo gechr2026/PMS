@@ -1,8 +1,11 @@
 // =============================================================
-// pms-employees CRUD Edge Function — v11
+// pms-employees CRUD Edge Function — v12
 // =============================================================
+// v12: supervisor enrichment via separate query instead of
+//      PostgREST self-referencing join (avoids schema cache issues).
+//
 // v11: Added supervisor_id (nullable self-ref FK) — read returns
-//      supervisor_name + supervisor_emp_code via join; PATCH accepts
+//      supervisor_name + supervisor_emp_code; PATCH accepts
 //      supervisor_id with self-reference guard.
 //
 // v10: PUT/PATCH now syncs auth.users.email + profiles.email/username
@@ -38,8 +41,7 @@ const SELECT_COLS =
     "position_id, level_id, supervisor_id, auth_user_id, is_active, " +
     "created_at, updated_at, created_by, updated_by, " +
     "pms_positions!inner(name, code, team_id, pms_teams!inner(name, code, department_id, pms_departments!inner(name, code))), " +
-    "pms_levels(name, sort_order), " +
-    "supervisor:pms_employees!pms_employees_supervisor_id_fkey(id, emp_code, full_name)";
+    "pms_levels(name, sort_order)";
 
 function json(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
@@ -69,14 +71,13 @@ type PosJoin = {
     pms_teams?: TeamJoin;
 };
 type LevelJoin = { name?: string; sort_order?: number };
-type SupervisorJoin = { id?: number; emp_code?: string | null; full_name?: string | null };
+type SupLookup = { id: number; emp_code: string | null; full_name: string | null };
 
-function flatten<T extends { pms_positions?: PosJoin | null; pms_levels?: LevelJoin | null; supervisor?: SupervisorJoin | null }>(row: T) {
+function flatten<T extends { pms_positions?: PosJoin | null; pms_levels?: LevelJoin | null }>(row: T) {
     if (!row) return row;
-    const { pms_positions, pms_levels, supervisor, ...rest } = row as Record<string, unknown> & {
+    const { pms_positions, pms_levels, ...rest } = row as Record<string, unknown> & {
         pms_positions?: PosJoin;
         pms_levels?: LevelJoin;
-        supervisor?: SupervisorJoin;
     };
     return {
         ...rest,
@@ -90,9 +91,25 @@ function flatten<T extends { pms_positions?: PosJoin | null; pms_levels?: LevelJ
         department_code: pms_positions?.pms_teams?.pms_departments?.code ?? null,
         level_name: pms_levels?.name ?? null,
         level_sort_order: pms_levels?.sort_order ?? null,
-        supervisor_name: supervisor?.full_name ?? null,
-        supervisor_emp_code: supervisor?.emp_code ?? null,
+        supervisor_name: null as string | null,
+        supervisor_emp_code: null as string | null,
     };
+}
+
+type FlatRow = ReturnType<typeof flatten>;
+
+async function enrichSupervisors(rows: FlatRow[], client: ReturnType<typeof createClient>): Promise<FlatRow[]> {
+    const ids = [...new Set(rows.map(r => (r as Record<string,unknown>).supervisor_id as number | null).filter((v): v is number => v != null))];
+    if (ids.length === 0) return rows;
+    const { data } = await client.from("pms_employees").select("id, emp_code, full_name").in("id", ids);
+    const map = new Map<number, SupLookup>((data ?? []).map((s: SupLookup) => [s.id, s]));
+    return rows.map(r => {
+        const sid = (r as Record<string,unknown>).supervisor_id as number | null;
+        if (!sid) return r;
+        const s = map.get(sid);
+        if (!s) return r;
+        return { ...r, supervisor_name: s.full_name, supervisor_emp_code: s.emp_code };
+    });
 }
 
 function validateNewRow(body: Record<string, unknown>): string | null {
@@ -232,7 +249,8 @@ Deno.serve(async (req: Request) => {
                         .maybeSingle();
                     if (error) return err(error.message, 400, error);
                     if (!data) return err("Not found", 404);
-                    return json({ data: flatten(data as never) });
+                    const [enriched] = await enrichSupervisors([flatten(data as never)], supabase);
+                    return json({ data: enriched });
                 }
 
                 const username = url.searchParams.get("username");
@@ -284,12 +302,9 @@ Deno.serve(async (req: Request) => {
 
                 const { data, count, error } = await q;
                 if (error) return err(error.message, 400, error);
-                return json({
-                    data: (data ?? []).map((r) => flatten(r as never)),
-                    count,
-                    limit,
-                    offset,
-                });
+                const flatList = (data ?? []).map((r) => flatten(r as never));
+                const enrichedList = await enrichSupervisors(flatList, supabase);
+                return json({ data: enrichedList, count, limit, offset });
             }
 
             // ---------- CREATE (single or bulk) ----------
@@ -386,10 +401,9 @@ Deno.serve(async (req: Request) => {
                         .insert(shaped)
                         .select(SELECT_COLS);
                     if (error) return err(error.message, mapPgError(error.code), error);
-                    return json({
-                        data: (data ?? []).map((r) => flatten(r as never)),
-                        inserted: data?.length ?? 0,
-                    }, 201);
+                    const flatBulk = (data ?? []).map((r) => flatten(r as never));
+                    const enrichedBulk = await enrichSupervisors(flatBulk, supabase);
+                    return json({ data: enrichedBulk, inserted: enrichedBulk.length }, 201);
                 }
 
                 // Single insert
@@ -402,7 +416,8 @@ Deno.serve(async (req: Request) => {
                     .select(SELECT_COLS)
                     .single();
                 if (error) return err(error.message, mapPgError(error.code), error);
-                return json({ data: flatten(data as never) }, 201);
+                const [enrichedSingle] = await enrichSupervisors([flatten(data as never)], supabase);
+                return json({ data: enrichedSingle }, 201);
             }
 
             // ---------- UPDATE ----------
@@ -503,7 +518,8 @@ Deno.serve(async (req: Request) => {
                     }).eq("id", authUserIdForSync);
                 }
 
-                return json({ data: flatten(data as never) });
+                const [enrichedPatch] = await enrichSupervisors([flatten(data as never)], supabase);
+                return json({ data: enrichedPatch });
             }
 
             // ---------- DELETE ----------
@@ -520,7 +536,8 @@ Deno.serve(async (req: Request) => {
                     return err(error.message, status, error);
                 }
                 if (!data) return err("Not found or not allowed", 404);
-                return json({ success: true, data: flatten(data as never) });
+                const [enrichedDel] = await enrichSupervisors([flatten(data as never)], supabase);
+                return json({ success: true, data: enrichedDel });
             }
 
             default:
