@@ -184,7 +184,7 @@
                                         :disabled="kpi.closed"
                                         class="h-4 w-4 cursor-pointer accent-blue-600"
                                     />
-                                    <span class="text-xs text-gray-500 whitespace-nowrap">{{ kpi.options[n - 1] }}</span>
+                                    <span class="text-xs text-gray-500 whitespace-pre-line">{{ kpi.options[n - 1] }}</span>
                                 </div>
                             </td>
                             <td class="px-2 py-3 text-center align-top">
@@ -252,7 +252,7 @@
                                         :disabled="comp.closed"
                                         class="h-4 w-4 cursor-pointer accent-blue-600"
                                     />
-                                    <span class="text-xs text-gray-600 leading-relaxed">{{ comp.options[n - 1] }}</span>
+                                    <span class="text-xs text-gray-600 leading-relaxed whitespace-pre-line">{{ comp.options[n - 1] }}</span>
                                 </div>
                             </td>
                             <td class="px-2 py-4 text-center align-top">

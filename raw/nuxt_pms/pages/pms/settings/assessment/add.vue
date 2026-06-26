@@ -246,12 +246,12 @@
                                         <td colspan="6" class="p-0">
                                             <div class="grid grid-cols-5 divide-x divide-gray-200">
                                                 <div v-for="(_, optIdx) in kpi.options" :key="optIdx" class="p-2">
-                                                    <input
+                                                    <textarea
                                                         v-model="kpi.options[optIdx]"
-                                                        type="text"
+                                                        rows="2"
                                                         :placeholder="`ตัวเลือก ${optIdx + 1}`"
-                                                        class="w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-gray-700 outline-none focus:border-blue-400 transition"
-                                                    />
+                                                        class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm text-gray-700 outline-none focus:border-blue-400 transition"
+                                                    ></textarea>
                                                 </div>
                                             </div>
                                         </td>
@@ -344,7 +344,7 @@
                                                 <div v-for="(_, optIdx) in comp.options" :key="optIdx" class="p-2">
                                                     <textarea
                                                         v-model="comp.options[optIdx]"
-                                                        rows="4"
+                                                        rows="6"
                                                         :placeholder="`คำอธิบายตัวเลือก ${optIdx + 1}`"
                                                         class="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-blue-400 transition"
                                                     />
