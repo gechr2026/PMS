@@ -69,6 +69,9 @@ export interface PmsReportRow {
     final_recommendation: number | null;
     submitted_count: number | null;
     is_approved: boolean | null;
+    avg_kpi_excl_self: number | null;
+    avg_comp_excl_self: number | null;
+    score_100: number | null;
 }
 
 export interface PmsReportListParams {

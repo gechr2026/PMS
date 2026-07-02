@@ -118,11 +118,14 @@
                             <th class="px-4 py-3 text-left font-semibold text-gray-700">ทีม</th>
                             <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">รหัสพนักงาน</th>
                             <th class="w-36 px-4 py-3 text-left font-semibold text-gray-700">ชื่อ-นามสกุล</th>
+                            <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">คะแนน KPI</th>
+                            <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">คะแนน Comp.</th>
+                            <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">คะแนน 100</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-if="loading">
-                            <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">
+                            <td colspan="10" class="px-4 py-10 text-center text-sm text-gray-400">
                                 <div class="inline-flex items-center gap-2">
                                     <svg class="animate-spin h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none">
                                         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
@@ -133,7 +136,7 @@
                             </td>
                         </tr>
                         <tr v-else-if="rows.length === 0">
-                            <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
+                            <td colspan="10" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
                         </tr>
                         <tr
                             v-else
@@ -148,6 +151,9 @@
                             <td class="px-4 py-3 text-gray-700">{{ item.team_name || '—' }}</td>
                             <td class="px-4 py-3 text-center font-medium text-gray-800">{{ item.emp_code || '—' }}</td>
                             <td class="px-4 py-3 font-medium text-gray-800">{{ item.employee_name || '—' }}</td>
+                            <td class="px-4 py-3 text-center text-gray-700">{{ item.avg_kpi_excl_self != null ? (item.avg_kpi_excl_self / 20).toFixed(2) : '—' }}</td>
+                            <td class="px-4 py-3 text-center text-gray-700">{{ item.avg_comp_excl_self != null ? (item.avg_comp_excl_self / 20).toFixed(2) : '—' }}</td>
+                            <td class="px-4 py-3 text-center font-semibold text-gray-800">{{ item.score_100 != null ? item.score_100.toFixed(2) : '—' }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -164,13 +170,14 @@
                             <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">คะแนน KPI</th>
                             <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">คะแนน Comp.</th>
                             <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">คะแนนรวม</th>
+                            <th class="w-28 px-4 py-3 text-center font-semibold text-gray-700">คะแนน 100</th>
                             <th class="w-20 px-4 py-3 text-center font-semibold text-gray-700">เกรด</th>
                             <th class="w-24 px-4 py-3 text-center font-semibold text-gray-700">สถานะ</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-if="loading">
-                            <td colspan="10" class="px-4 py-10 text-center text-sm text-gray-400">
+                            <td colspan="11" class="px-4 py-10 text-center text-sm text-gray-400">
                                 <div class="inline-flex items-center gap-2">
                                     <svg class="animate-spin h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none">
                                         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
@@ -181,7 +188,7 @@
                             </td>
                         </tr>
                         <tr v-else-if="selfRows.length === 0">
-                            <td colspan="10" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
+                            <td colspan="11" class="px-4 py-10 text-center text-sm text-gray-400">ไม่พบข้อมูล</td>
                         </tr>
                         <tr
                             v-else
@@ -197,6 +204,7 @@
                             <td class="px-4 py-3 text-center text-gray-700">{{ item.kpi_score != null ? item.kpi_score.toFixed(2) : '—' }}</td>
                             <td class="px-4 py-3 text-center text-gray-700">{{ item.competency_score != null ? item.competency_score.toFixed(2) : '—' }}</td>
                             <td class="px-4 py-3 text-center text-gray-700">{{ item.total_score != null ? item.total_score.toFixed(2) : '—' }}</td>
+                            <td class="px-4 py-3 text-center font-semibold text-gray-800">{{ item.total_score != null ? (item.total_score * 20).toFixed(2) : '—' }}</td>
                             <td class="px-4 py-3 text-center">
                                 <span v-if="item.grade" class="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold" style="background:#eff6ff;color:#2563eb;">{{ item.grade }}</span>
                                 <span v-else class="text-gray-400">—</span>
@@ -346,7 +354,7 @@ const handleExport = () => {
             'ลำดับ', 'รอบปีการประเมิน', 'รอบการประเมิน',
             'ทีม', 'รหัสพนักงาน', 'ชื่อ-นามสกุล',
             'ตำแหน่ง', 'ระดับ', 'แบบประเมิน',
-            'คะแนน KPI', 'คะแนน Competency', 'คะแนนรวม', 'เกรด', 'สถานะ',
+            'คะแนน KPI', 'คะแนน Competency', 'คะแนนรวม', 'คะแนน 100 คะแนน', 'เกรด', 'สถานะ',
         ];
         lines = [headers.map(csvCell).join(',')];
         selfRows.value.forEach((item, i) => {
@@ -363,6 +371,7 @@ const handleExport = () => {
                 item.kpi_score ?? '',
                 item.competency_score ?? '',
                 item.total_score ?? '',
+                item.total_score != null ? (item.total_score * 20).toFixed(2) : '',
                 item.grade ?? '',
                 item.eval_status === 'sent' ? 'ส่งแล้ว' : 'ร่าง',
             ].map(csvCell).join(','));
@@ -375,7 +384,7 @@ const handleExport = () => {
             'แผนก', 'ทีม', 'รหัสพนักงาน', 'ชื่อ-นามสกุล',
             'ตำแหน่ง', 'ระดับ', 'แบบประเมิน',
             'คะแนน KPI เฉลี่ย', 'คะแนน Competency เฉลี่ย', 'คะแนนรวมเฉลี่ย',
-            'คะแนนสรุป', 'เกรด', 'อนุมัติแล้ว',
+            'คะแนนสรุป', 'คะแนน 100 คะแนน', 'เกรด', 'อนุมัติแล้ว',
         ];
         lines = [headers.map(csvCell).join(',')];
         rows.value.forEach((item, i) => {
@@ -390,10 +399,11 @@ const handleExport = () => {
                 item.position_name ?? '',
                 item.level_name ?? '',
                 item.assessment_name ?? '',
-                item.avg_kpi_score ?? '',
-                item.avg_competency_score ?? '',
+                item.avg_kpi_excl_self != null ? (item.avg_kpi_excl_self / 20).toFixed(2) : '',
+                item.avg_comp_excl_self != null ? (item.avg_comp_excl_self / 20).toFixed(2) : '',
                 item.avg_total_score ?? '',
                 item.final_total_score ?? '',
+                item.score_100 != null ? item.score_100.toFixed(2) : '',
                 item.final_grade ?? '',
                 item.is_approved ? 'ใช่' : (item.is_approved === false ? 'ไม่' : ''),
             ].map(csvCell).join(','));

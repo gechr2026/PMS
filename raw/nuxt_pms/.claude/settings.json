@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Volumes/WDSSD/PMS/supabase/functions/pms-reports -type f | head -10)",
+      "Read(//Volumes/WDSSD/PMS/supabase/functions/pms-reports/**)",
+      "Bash(grep -r \"pms_evaluation_results_v\\\\|avg_kpi_score\\\\|avg_competency_score\\\\|final_total_score\" /Volumes/WDSSD/PMS/supabase/migrations/ --include=\"*.sql\" -l 2>/dev/null)",
+      "Read(//Volumes/WDSSD/PMS/supabase/migrations/**)",
+      "Bash(grep -r \"pms_evaluation_results_v\\\\|avg_kpi_score\" /Volumes/WDSSD/PMS/ --include=\"*.sql\" -l 2>/dev/null | head -10)",
+      "Read(//Volumes/WDSSD/PMS/**)"
+    ]
+  }
+}

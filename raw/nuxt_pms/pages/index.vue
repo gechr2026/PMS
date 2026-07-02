@@ -122,8 +122,8 @@
             </div>
         </div>
 
-        <!-- Charts Row 2 (admin / manager only) -->
-        <div v-if="showOrgCharts" class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <!-- Charts Row 2 (admin only) -->
+        <div v-if="showAvgScoreChart" class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 class="mb-4 text-sm font-bold text-gray-800">คะแนนเฉลี่ยของแต่ละแผนก</h2>
             <client-only>
                 <div v-if="avgScoreCategories.length === 0" class="flex h-[300px] items-center justify-center text-gray-400 text-sm">
@@ -159,9 +159,14 @@ const dashboardApi = usePmsDashboard();
 const yearsApi     = usePmsYears();
 const cyclesApi    = usePmsCycles();
 
-/** Org-level charts visible only to admin and manager roles */
+/** Org-level progress charts visible to admin and manager */
 const showOrgCharts = computed(() =>
     profile.value?.role === 'admin' || profile.value?.role === 'manager'
+);
+
+/** Avg-score-by-department chart visible to admin only */
+const showAvgScoreChart = computed(() =>
+    profile.value?.role === 'admin'
 );
 
 // ── Filters ────────────────────────────────────────────────────

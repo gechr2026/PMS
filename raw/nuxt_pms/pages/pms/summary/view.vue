@@ -110,6 +110,15 @@
                 </div>
             </div>
 
+            <!-- Score out of 100 -->
+            <div class="mb-4 rounded-xl p-5 text-white" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+                <p class="text-xs font-semibold opacity-90">คะแนนรวม 100 คะแนน</p>
+                <p class="mt-1 text-4xl font-bold tracking-tight">{{ formatScore(score100) }}<span class="ml-1 text-lg font-semibold opacity-75">/ 100</span></p>
+                <p class="mt-1.5 text-xs opacity-80">
+                    KPI {{ formatScore(kpiScore100) }} + Competency {{ formatScore(compScore100) }} = {{ formatScore(score100) }} คะแนน
+                </p>
+            </div>
+
             <!-- Peer Comparison -->
             <div class="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div class="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -484,6 +493,13 @@ const competencyHeaderRatio = computed<number>(() =>
 const finalScore = computed<number>(() =>
     kpiSubtotal.value * kpiHeaderRatio.value / 100
     + competencySubtotal.value * competencyHeaderRatio.value / 100);
+
+// Score out of 100: (score/5) × weight%
+const kpiScore100 = computed<number>(() =>
+    kpiSubtotal.value / 5 * kpiHeaderRatio.value);
+const compScore100 = computed<number>(() =>
+    competencySubtotal.value / 5 * competencyHeaderRatio.value);
+const score100 = computed<number>(() => kpiScore100.value + compScore100.value);
 
 // ── Per-role mean (raw selected_option 1..5, not %-converted) ────────
 // Replaces values from pms_evaluation_per_role_v (which stores weighted %).
