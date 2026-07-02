@@ -69,7 +69,7 @@
                 </NuxtLink>
 
                 <!-- รายงานและสรุปผล -->
-                <template v-if="acl.canSeeTracking.value || acl.canSeeSummary.value || acl.canSeeReports.value">
+                <template v-if="acl.canSeeTracking.value || acl.canSeeSummary.value || acl.canSeeReports.value || acl.canSeeReportsEdit.value">
                     <p class="px-2 pt-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">รายงานและสรุปผล</p>
                     <NuxtLink v-if="acl.canSeeTracking.value" to="/pms/report/tracking" class="sidebar-link" :class="{ active: $route.path.startsWith('/pms/report/tracking') }">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -85,12 +85,19 @@
                         </svg>
                         <span>สรุปผลการประเมิน</span>
                     </NuxtLink>
-                    <NuxtLink v-if="acl.canSeeReports.value" to="/pms/reports" class="sidebar-link" :class="{ active: $route.path.startsWith('/pms/reports') }">
+                    <NuxtLink v-if="acl.canSeeReports.value" to="/pms/reports" class="sidebar-link" :class="{ active: $route.path === '/pms/reports' }">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                             <rect x="5" y="2" width="14" height="20" rx="2"/>
                             <path d="M9 7h6M9 11h6M9 15h6" stroke-linecap="round"/>
                         </svg>
                         <span>รายงาน</span>
+                    </NuxtLink>
+                    <NuxtLink v-if="acl.canSeeReportsEdit.value" to="/pms/reports-edit" class="sidebar-link" :class="{ active: $route.path.startsWith('/pms/reports-edit') }">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>แก้ไขรายงาน</span>
                     </NuxtLink>
                 </template>
 

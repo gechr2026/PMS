@@ -15,6 +15,7 @@ export interface RouteAcl {
 
 export const ROUTE_ACL: RouteAcl[] = [
     { prefix: '/pms/settings',        roles: ['admin'] },
+    { prefix: '/pms/reports-edit',     roles: ['admin'] },
     { prefix: '/pms/reports',         roles: ['admin', 'executive', 'manager'] },
     { prefix: '/pms/evaluation',      roles: ['admin', 'executive', 'manager'] },
     { prefix: '/pms/summary',         roles: ['admin', 'executive', 'manager'] },
@@ -40,16 +41,18 @@ export const usePmsAcl = () => {
     };
 
     // Boolean shortcuts the sidebar binds to.
-    const canSeeSettings = computed(() => canAccess('/pms/settings'));
-    const canSeeReports  = computed(() => canAccess('/pms/reports'));
-    const canSeeSummary  = computed(() => canAccess('/pms/summary'));
-    const canSeeTracking = computed(() => canAccess('/pms/report/tracking'));
-    const canSeeCompare  = computed(() => canAccess('/pms/compare'));
+    const canSeeSettings     = computed(() => canAccess('/pms/settings'));
+    const canSeeReports      = computed(() => canAccess('/pms/reports'));
+    const canSeeReportsEdit  = computed(() => canAccess('/pms/reports-edit'));
+    const canSeeSummary      = computed(() => canAccess('/pms/summary'));
+    const canSeeTracking     = computed(() => canAccess('/pms/report/tracking'));
+    const canSeeCompare      = computed(() => canAccess('/pms/compare'));
 
     return {
         canAccess,
         canSeeSettings,
         canSeeReports,
+        canSeeReportsEdit,
         canSeeSummary,
         canSeeTracking,
         canSeeCompare,
