@@ -212,15 +212,8 @@
             </div>
 
             <!-- Scale Info Box -->
-            <div class="mx-5 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-                <p class="mb-2 text-xs font-bold text-amber-800">ระดับคะแนน</p>
-                <div class="space-y-0.5 text-xs text-amber-700 leading-relaxed">
-                    <p><strong>1 = ไม่สังเกตเห็น (Non Observe):</strong> ไม่สามารถแสดงให้เห็นถึงพฤติกรรมตามระบุในพฤนานกรมสมรรถนะได้</p>
-                    <p><strong>2 = กำลังพัฒนา (Developing):</strong> สามารถทำตามสมรรถนะตามที่กำหนดได้บ้าง ต้องได้รับการพัฒนาเพิ่มเติม</p>
-                    <p><strong>3 = อยู่ในระดับที่ใช้งานได้ (Proficient):</strong> สามารถทำได้ถึงสมรรถนะที่คาดหวัง ต้องปรับปรุงบ้าง</p>
-                    <p><strong>4 = อยู่ในระดับที่ใช้งานได้ดี (Proficient):</strong> สามารถทำได้ครบหรือเกินสมรรถนะที่กำหนด โดยไม่ปรากฏประเด็นต้องปรับแก้ไข</p>
-                    <p><strong>5 = เป็นแบบอย่างที่ดีให้กับผู้อื่น (Role Model):</strong> ทำได้ครบตามสมรรถนะในระดับสูง สามารถอ้างอิงเป็นแบบอย่างให้กับผู้อื่น</p>
-                </div>
+            <div class="mx-5 mt-4">
+                <PmsScoreScaleLegend />
             </div>
 
             <div class="mt-4 overflow-x-auto">

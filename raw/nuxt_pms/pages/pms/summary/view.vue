@@ -264,9 +264,8 @@
                     <span class="text-sm font-semibold text-gray-700">แบบประเมิน Competency</span>
                 </div>
 
-                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    <p class="mb-1 font-semibold">ระดับคะแนน</p>
-                    <p>1 = ไม่สังเกตเห็น (Non Observe) · 2 = กำลังพัฒนา (Developing) · 3 = อยู่ในระดับที่ใช้งานได้ (Proficient) · 4 = อยู่ในระดับที่ใช้งานได้ดี · 5 = เป็นแบบอย่างที่ดี (Role Model)</p>
+                <div class="mb-4">
+                    <PmsScoreScaleLegend />
                 </div>
 
                 <div class="overflow-x-auto">

@@ -187,15 +187,16 @@
                                             <line x1="22" y1="11" x2="16" y2="11" stroke-linecap="round"/>
                                         </svg>
                                     </button>
-                                    <span
+                                    <button
                                         v-else
-                                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-500"
-                                        title="มีบัญชีผู้ใช้แล้ว"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-500 transition hover:border-emerald-300 hover:bg-emerald-100"
+                                        title="มีบัญชีผู้ใช้แล้ว — คลิกเพื่อแก้ไขบทบาท (role)"
+                                        @click="openEditRole(item)"
                                     >
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
-                                    </span>
+                                    </button>
                                     <NuxtLink
                                         :to="`/pms/settings/employee/add?id=${item.id}`"
                                         class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 text-blue-500 transition hover:bg-blue-50"
@@ -298,11 +299,7 @@
                             v-model="createUserForm.role"
                             class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
                         >
-                            <option value="officer">Officer — พนักงาน</option>
-                            <option value="supervisor">Supervisor — หัวหน้างาน (peer)</option>
-                            <option value="manager">Manager — หัวหน้า</option>
-                            <option value="executive">Executive — ผู้บริหาร</option>
-                            <option value="admin">Admin — ผู้ดูแลระบบ</option>
+                            <option v-for="opt in ROLE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                         </select>
                     </div>
                     <div>
@@ -324,6 +321,69 @@
                         :disabled="creatingUser || !createUserForm.email.trim()"
                         @click="executeCreateUser"
                     >{{ creatingUser ? 'กำลังสร้าง...' : 'สร้างบัญชี' }}</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Role Modal -->
+        <div v-if="showEditRoleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <div class="mb-4 flex items-center gap-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M17 11l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">แก้ไขบทบาท (role)</h3>
+                        <p class="text-sm text-gray-500">สำหรับ "{{ editRoleTarget?.full_name }}" ({{ editRoleTarget?.emp_code }})</p>
+                    </div>
+                </div>
+
+                <div v-if="loadingRole" class="py-6 text-center text-sm text-gray-500">กำลังโหลดข้อมูลบัญชี...</div>
+
+                <div v-else class="space-y-3">
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-600">อีเมล / ชื่อผู้ใช้</label>
+                        <input
+                            :value="editRoleEmail"
+                            type="text"
+                            disabled
+                            class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+                        />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-600">บทบาท (role) <span class="text-red-500">*</span></label>
+                        <select
+                            v-model="editRoleForm.role"
+                            :disabled="isEditingSelf"
+                            class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
+                        >
+                            <option v-for="opt in ROLE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">
+                            บทบาทเดิม: {{ roleLabel(originalRole) }}
+                        </p>
+                    </div>
+                    <div v-if="isEditingSelf" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                        ไม่สามารถเปลี่ยนบทบาทของตัวเองได้ — ให้ผู้ดูแลระบบคนอื่นเป็นผู้แก้ไข
+                    </div>
+                    <div v-else class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                        ผู้ใช้รายนี้ต้องเข้าสู่ระบบใหม่ (หรือรีเฟรชหน้า) สิทธิ์จึงจะเปลี่ยนตาม
+                    </div>
+                </div>
+
+                <div v-if="editRoleError" class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{{ editRoleError }}</div>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition" :disabled="savingRole" @click="showEditRoleModal = false">ยกเลิก</button>
+                    <button
+                        class="rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                        style="background:#2563eb;"
+                        :disabled="savingRole || loadingRole || isEditingSelf || editRoleForm.role === originalRole"
+                        @click="executeSaveRole"
+                    >{{ savingRole ? 'กำลังบันทึก...' : 'บันทึก' }}</button>
                 </div>
             </div>
         </div>
@@ -353,10 +413,11 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { PmsApiError } from '@/composables/usePmsApi';
 import type { PmsEmployee } from '@/composables/usePmsEmployees';
 import type { PmsTeam } from '@/composables/usePmsTeams';
+import type { PmsRole } from '@/composables/useAuth';
 
 useHead({ title: 'ข้อมูลพนักงาน | ระบบประเมินผลการปฏิบัติงาน' });
 definePageMeta({ layout: 'pms-layout' });
@@ -474,6 +535,15 @@ const createUserTarget    = ref<PmsEmployee | null>(null);
 const createUserError     = ref('');
 const creatingUser        = ref(false);
 type CreateUserRole = 'officer' | 'supervisor' | 'manager' | 'executive' | 'admin';
+const ROLE_OPTIONS: { value: CreateUserRole; label: string }[] = [
+    { value: 'officer',    label: 'Officer — พนักงาน' },
+    { value: 'supervisor', label: 'Supervisor — หัวหน้างาน (peer)' },
+    { value: 'manager',    label: 'Manager — หัวหน้า' },
+    { value: 'executive',  label: 'Executive — ผู้บริหาร' },
+    { value: 'admin',      label: 'Admin — ผู้ดูแลระบบ' },
+];
+const roleLabel = (role: CreateUserRole | null) =>
+    ROLE_OPTIONS.find(o => o.value === role)?.label ?? '-';
 const createUserForm = ref<{ email: string; role: CreateUserRole; password: string }>({
     email: '', role: 'officer', password: '',
 });
@@ -517,6 +587,95 @@ const executeCreateUser = async () => {
         createUserError.value = (e as Error).message || 'สร้างบัญชีไม่สำเร็จ';
     } finally {
         creatingUser.value = false;
+    }
+};
+
+// Edit role — updates public.profiles.role directly.
+// RLS policy `profiles_update_admin` already allows admins to write any row,
+// and both current_user_role() and useAuth read the role from `profiles`,
+// so no auth.users / metadata write is needed.
+const { profile: currentProfile } = useAuth();
+const showEditRoleModal = ref(false);
+const editRoleTarget    = ref<PmsEmployee | null>(null);
+const editRoleEmail     = ref('');
+const editRoleError     = ref('');
+const loadingRole       = ref(false);
+const savingRole        = ref(false);
+const originalRole      = ref<CreateUserRole | null>(null);
+const editRoleForm      = ref<{ role: CreateUserRole | null }>({ role: null });
+
+// Guard: an admin demoting themselves could lock the whole system out.
+const isEditingSelf = computed(() =>
+    !!editRoleTarget.value?.auth_user_id &&
+    editRoleTarget.value.auth_user_id === currentProfile.value?.id
+);
+
+const openEditRole = async (item: PmsEmployee) => {
+    if (!item.auth_user_id) return;
+    editRoleTarget.value  = item;
+    editRoleError.value   = '';
+    editRoleEmail.value   = item.username ?? '';
+    originalRole.value    = null;
+    editRoleForm.value    = { role: null };
+    showEditRoleModal.value = true;
+
+    loadingRole.value = true;
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, email, role')
+            .eq('id', item.auth_user_id)
+            .maybeSingle();
+        if (error) {
+            editRoleError.value = error.message || 'โหลดข้อมูลบัญชีไม่สำเร็จ';
+            return;
+        }
+        if (!data) {
+            editRoleError.value = 'ไม่พบบัญชีผู้ใช้ของพนักงานรายนี้';
+            return;
+        }
+        const row = data as { id: string; email: string | null; role: PmsRole };
+        editRoleEmail.value = row.email ?? editRoleEmail.value;
+        originalRole.value  = row.role as CreateUserRole;
+        editRoleForm.value  = { role: row.role as CreateUserRole };
+    } catch (e) {
+        editRoleError.value = (e as Error).message || 'โหลดข้อมูลบัญชีไม่สำเร็จ';
+    } finally {
+        loadingRole.value = false;
+    }
+};
+
+const executeSaveRole = async () => {
+    const target = editRoleTarget.value;
+    const nextRole = editRoleForm.value.role;
+    if (!target?.auth_user_id || !nextRole || isEditingSelf.value) return;
+    savingRole.value = true;
+    editRoleError.value = '';
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({ role: nextRole })
+            .eq('id', target.auth_user_id)
+            .select('id')
+            .maybeSingle();
+        if (error) {
+            const code = (error as { code?: string }).code;
+            editRoleError.value = code === '42501'
+                ? 'ไม่มีสิทธิ์แก้ไขบทบาท (admin เท่านั้น)'
+                : (error.message || 'บันทึกบทบาทไม่สำเร็จ');
+            return;
+        }
+        // RLS returns zero rows instead of an error when the write is rejected.
+        if (!data) {
+            editRoleError.value = 'ไม่มีสิทธิ์แก้ไขบทบาท (admin เท่านั้น)';
+            return;
+        }
+        showEditRoleModal.value = false;
+        editRoleTarget.value = null;
+    } catch (e) {
+        editRoleError.value = (e as Error).message || 'บันทึกบทบาทไม่สำเร็จ';
+    } finally {
+        savingRole.value = false;
     }
 };
 
