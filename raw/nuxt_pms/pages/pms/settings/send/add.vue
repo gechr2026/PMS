@@ -619,8 +619,13 @@ const autoFillSelfRow = () => {
 };
 
 // ── Ensure header saved, return sendId ───────────────────────────────
-const ensureHeaderSaved = async (): Promise<number | null> => {
-    if (currentSendId.value) return currentSendId.value;
+// แต่ละแถวผู้ประเมินมีปุ่มบันทึก/ส่งของตัวเอง เมื่อกดหลายแถวไล่เลี่ยกันทุกแถวจะเห็น
+// currentSendId เป็น null พร้อมกันแล้วต่างคนต่างสร้าง send ใบใหม่ (เคยทำให้พนักงาน
+// คนเดียวได้ใบซ้ำ 2-3 ใบ) ตัวแปรนี้เก็บ request ที่กำลังทำงานไว้ ผู้เรียกรายถัดไป
+// จึงรอผลของรายแรกแทนที่จะยิงสร้างซ้ำ
+let ensureHeaderInFlight: Promise<number | null> | null = null;
+
+const createHeader = async (): Promise<number | null> => {
     errors.empCode = ''; errors.cycleId = '';
     if (form.employee_id === null) { errors.empCode = 'กรุณาเลือกผู้ถูกประเมินก่อน'; return null; }
     if (form.cycle_id === null)    { errors.cycleId = 'กรุณาเลือกรอบการประเมินก่อน'; return null; }
@@ -631,6 +636,13 @@ const ensureHeaderSaved = async (): Promise<number | null> => {
     currentSendId.value = id;
     router.replace(`/pms/settings/send/add?id=${id}`);
     return id;
+};
+
+const ensureHeaderSaved = async (): Promise<number | null> => {
+    if (currentSendId.value) return currentSendId.value;
+    if (ensureHeaderInFlight) return ensureHeaderInFlight;
+    ensureHeaderInFlight = createHeader().finally(() => { ensureHeaderInFlight = null; });
+    return ensureHeaderInFlight;
 };
 
 // ── Save rater as draft (no notification) ────────────────────────────
@@ -826,15 +838,9 @@ const handleSubmit = async () => {
                 note,
             });
         } else {
-            const res = await sendsApi.create({
-                cycle_id:    form.cycle_id    as number,
-                employee_id: form.employee_id as number,
-                note,
-            });
-            const id = (res as { data?: { id?: number } })?.data?.id ?? (res as { id?: number })?.id ?? 0;
-            if (!id) throw new Error('สร้าง send ไม่สำเร็จ');
-            currentSendId.value = id;
-            router.replace(`/pms/settings/send/add?id=${id}`);
+            // ผ่าน ensureHeaderSaved เสมอ เพื่อใช้ตัวกันสร้างซ้ำร่วมกับปุ่มบันทึก/ส่งของแต่ละแถว
+            const id = await ensureHeaderSaved();
+            if (!id) return;
         }
         showToast.value = true;
         setTimeout(() => { showToast.value = false; }, 1500);

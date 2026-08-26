@@ -63,7 +63,7 @@
         <div class="mb-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
             <div class="rounded-xl p-5 text-white" style="background:#4361ee;">
                 <p class="text-sm font-medium opacity-90">จำนวนงานที่ได้รับมอบหมาย</p>
-                <p class="mt-3 text-5xl font-bold">{{ data?.my_stats.total ?? 0 }}</p>
+                <p class="mt-3 text-5xl font-bold">{{ myOutstanding }}</p>
             </div>
             <div class="rounded-xl p-5 text-white" style="background:#e7515a;">
                 <p class="text-sm font-medium opacity-90">จำนวนงานที่ยังไม่ได้ทำ</p>
@@ -192,6 +192,11 @@ const loading      = ref(false);
 const errorMessage = ref('');
 
 const hasData = computed(() => (data.value?.stats.total ?? 0) > 0);
+
+// งานคงค้างของฉัน — ไม่รวมใบที่ส่งแล้ว (my_stats.done) ตัวเลขจึงลดลงทุกครั้งที่ส่งแบบประเมิน
+const myOutstanding = computed(() =>
+    (data.value?.my_stats.pending ?? 0) + (data.value?.my_stats.in_progress ?? 0)
+);
 
 const fetchDashboard = async () => {
     loading.value = true;
