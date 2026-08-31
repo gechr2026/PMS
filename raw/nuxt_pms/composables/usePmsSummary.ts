@@ -39,6 +39,8 @@ export interface PmsSummaryRater {
     selected_option: number | null;
     is_closed: boolean;
     score: number | null;
+    /** Free-text note this rater left on the item. null when none. */
+    comment: string | null;
 }
 
 export interface PmsSummaryItem {
@@ -119,11 +121,9 @@ export interface PmsSummaryListParams {
 export const usePmsSummary = () => {
     const { request } = usePmsApi();
 
-    const list = (params: PmsSummaryListParams = {}) =>
-        request<ListResponse<PmsSummaryRow>>('/pms-summary', { query: params });
+    const list = (params: PmsSummaryListParams = {}) => request<ListResponse<PmsSummaryRow>>('/pms-summary', { query: params });
 
-    const detail = (sendId: number) =>
-        request<{ data: PmsSummaryDetail }>(`/pms-summary/${sendId}`);
+    const detail = (sendId: number) => request<{ data: PmsSummaryDetail }>(`/pms-summary/${sendId}`);
 
     return { list, detail };
 };

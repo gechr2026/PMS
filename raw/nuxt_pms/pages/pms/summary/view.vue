@@ -236,7 +236,20 @@
                                 <td class="px-4 py-3 font-medium text-gray-800">{{ kpi.subject }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ kpi.detail || '—' }}</td>
                                 <td v-for="rater in raterColumns" :key="`${rater.evaluator_role}:${rater.evaluator_employee_id ?? ''}`" class="px-3 py-3 text-center text-gray-700">
-                                    {{ ratingFor(kpi.by_rater, rater.evaluator_role, rater.evaluator_employee_id) }}
+                                    <span class="inline-flex items-center justify-center gap-1">
+                                        {{ ratingFor(kpi.by_rater, rater.evaluator_role, rater.evaluator_employee_id) }}
+                                        <button
+                                            v-if="raterFor(kpi.by_rater, rater.evaluator_role, rater.evaluator_employee_id)?.comment"
+                                            type="button"
+                                            class="text-blue-500 transition hover:text-blue-700"
+                                            title="ดู Comment"
+                                            @click="openCommentView(kpi.subject, raterFor(kpi.by_rater, rater.evaluator_role, rater.evaluator_employee_id)!)"
+                                        >
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                                <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-4.6A8 8 0 0 1 3 12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                    </span>
                                 </td>
                                 <td class="px-3 py-3 text-center font-semibold text-gray-800">{{ formatScore(itemAvgExclSelf(kpi)) }}</td>
                                 <td class="px-3 py-3 text-center text-gray-700">{{ Number(kpi.weight ?? 0).toFixed(2) }}</td>
@@ -295,7 +308,20 @@
                                 <td class="px-4 py-3 text-center text-gray-600">{{ idx + 1 }}</td>
                                 <td class="px-4 py-3 font-medium text-gray-800 whitespace-pre-line">{{ comp.subject }}</td>
                                 <td v-for="rater in raterColumns" :key="`${rater.evaluator_role}:${rater.evaluator_employee_id ?? ''}`" class="px-3 py-3 text-center text-gray-700">
-                                    {{ ratingFor(comp.by_rater, rater.evaluator_role, rater.evaluator_employee_id) }}
+                                    <span class="inline-flex items-center justify-center gap-1">
+                                        {{ ratingFor(comp.by_rater, rater.evaluator_role, rater.evaluator_employee_id) }}
+                                        <button
+                                            v-if="raterFor(comp.by_rater, rater.evaluator_role, rater.evaluator_employee_id)?.comment"
+                                            type="button"
+                                            class="text-blue-500 transition hover:text-blue-700"
+                                            title="ดู Comment"
+                                            @click="openCommentView(comp.subject, raterFor(comp.by_rater, rater.evaluator_role, rater.evaluator_employee_id)!)"
+                                        >
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                                <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-4.6A8 8 0 0 1 3 12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                    </span>
                                 </td>
                                 <td class="px-3 py-3 text-center font-semibold text-gray-800">{{ formatScore(itemAvgExclSelf(comp)) }}</td>
                                 <td class="px-3 py-3 text-center text-gray-700">{{ Number(comp.weight ?? 0).toFixed(2) }}</td>
@@ -368,6 +394,53 @@
                 </div>
             </div>
         </template>
+
+        <!-- ── Item comment viewer (read-only) ───────────────────────────── -->
+        <div
+            v-if="commentView"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            @click.self="commentView = null"
+        >
+            <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+                <div class="mb-4 flex items-start gap-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2">
+                            <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-4.6A8 8 0 0 1 3 12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-gray-800">Comment เพิ่มเติม</h3>
+                        <p class="whitespace-pre-line text-xs leading-relaxed text-gray-500">{{ commentView.subject }}</p>
+                    </div>
+                </div>
+
+                <div class="mb-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span class="rounded bg-gray-100 px-2 py-1 font-semibold text-gray-600">
+                        {{ ROLE_LABEL[commentView.rater.evaluator_role] ?? commentView.rater.evaluator_role }}
+                    </span>
+                    <span v-if="commentView.rater.evaluator_emp_code" class="rounded bg-blue-50 px-2 py-1 font-semibold text-blue-700">
+                        {{ commentView.rater.evaluator_emp_code }}
+                    </span>
+                    <span v-if="commentView.rater.evaluator_full_name" class="text-gray-500">
+                        {{ commentView.rater.evaluator_full_name }}
+                    </span>
+                </div>
+
+                <p class="whitespace-pre-line rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm leading-relaxed text-gray-800">
+                    {{ commentView.rater.comment }}
+                </p>
+
+                <div class="mt-5 flex justify-end">
+                    <button
+                        type="button"
+                        class="rounded-lg border border-gray-200 bg-gray-50 px-6 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
+                        @click="commentView = null"
+                    >
+                        ปิด
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -554,9 +627,22 @@ const perRoleStats = computed<PerRoleRow[]>(() => {
     });
 });
 
+/** The rater entry behind a cell, or undefined when that rater did not score the item. */
+const raterFor = (raters: PmsSummaryRater[], role: string, empId?: number | null): PmsSummaryRater | undefined =>
+    raters.find(x => x.evaluator_role === role && (empId == null || x.evaluator_employee_id === empId));
+
+// ── Item comment viewer (read-only) ─────────────────────────────────────
+// Raters can attach a note to each KPI/competency while filling the form
+// (/pms/assigned/view). Here the note shows as an icon beside the score;
+// clicking it opens the text. Nothing on this page can edit it.
+const commentView = ref<{ subject: string; rater: PmsSummaryRater } | null>(null);
+const openCommentView = (subject: string, rater: PmsSummaryRater) => {
+    commentView.value = { subject, rater };
+};
+
 /** Get rating cell value for a specific (role + evaluator_employee_id) */
 const ratingFor = (raters: PmsSummaryRater[], role: string, empId?: number | null): string => {
-    const r = raters.find(x => x.evaluator_role === role && (empId == null || x.evaluator_employee_id === empId));
+    const r = raterFor(raters, role, empId);
     if (!r) return '—';
     if (r.is_closed) return '×';
     if (r.selected_option === null || r.selected_option === undefined) return '—';

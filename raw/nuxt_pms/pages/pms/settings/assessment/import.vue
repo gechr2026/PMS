@@ -134,11 +134,25 @@
                             </span>
                         </div>
                         <div class="flex gap-2">
+                            <span class="w-36 flex-shrink-0 font-semibold text-gray-500">รหัสพนักงาน</span>
+                            <span :class="parsed.header.empCode && !resolvedIds.employee ? 'text-red-500' : 'text-gray-800'">
+                                {{ parsed.header.empCode || '—' }}
+                                <span v-if="resolvedIds.employee" class="text-gray-500">({{ resolvedIds.employee.full_name }})</span>
+                                <span v-else-if="parsed.header.empCode" class="text-red-400">(ไม่พบในระบบ)</span>
+                            </span>
+                        </div>
+                        <div class="flex gap-2">
                             <span class="w-36 flex-shrink-0 font-semibold text-gray-500">ตำแหน่ง</span>
                             <span :class="resolvedIds.position_id ? 'text-gray-800' : 'text-red-500'">
-                                {{ parsed.header.positionName || '—' }}
-                                <span v-if="!resolvedIds.position_id && parsed.header.positionName" class="text-red-400">(ไม่พบในระบบ)</span>
+                                <!-- The employee's position wins over the name in the file -->
+                                {{ resolvedPositionName || parsed.header.positionName || '—' }}
+                                <span v-if="resolvedIds.positionAmbiguous" class="text-red-400">(มีหลายรายการ — ต้องระบุรหัสพนักงาน)</span>
+                                <span v-else-if="!resolvedIds.position_id && parsed.header.positionName" class="text-red-400">(ไม่พบในระบบ)</span>
                             </span>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="w-36 flex-shrink-0 font-semibold text-gray-500">ทีม</span>
+                            <span class="text-gray-800">{{ resolvedTeamName || '—' }}</span>
                         </div>
                         <div class="flex gap-2">
                             <span class="w-36 flex-shrink-0 font-semibold text-gray-500">ระดับตำแหน่ง</span>
@@ -307,12 +321,14 @@ import type { PmsCycle } from '@/composables/usePmsCycles';
 import type { PmsPosition } from '@/composables/usePmsPositions';
 import type { PmsLevel } from '@/composables/usePmsLevels';
 import type { PmsCriteria } from '@/composables/usePmsCriteria';
+import type { PmsEmployee } from '@/composables/usePmsEmployees';
 
 const router = useRouter();
 const assessmentsApi = usePmsAssessments();
 const yearsApi       = usePmsYears();
 const cyclesApi      = usePmsCycles();
 const positionsApi   = usePmsPositions();
+const employeesApi   = usePmsEmployees();
 const levelsApi      = usePmsLevels();
 const criteriaApi    = usePmsCriteria();
 
@@ -325,6 +341,13 @@ const cycleOptions    = ref<PmsCycle[]>([]);
 const positionOptions = ref<PmsPosition[]>([]);
 const levelOptions    = ref<PmsLevel[]>([]);
 const criteriaOptions = ref<PmsCriteria[]>([]);
+const employeeOptions = ref<PmsEmployee[]>([]);
+
+/** Position/team actually resolved — shown in the preview so the wrong one is visible before importing. */
+const resolvedPosition = computed(() =>
+    positionOptions.value.find(p => p.id === resolvedIds.value.position_id) ?? null);
+const resolvedPositionName = computed(() => resolvedPosition.value?.name ?? '');
+const resolvedTeamName     = computed(() => resolvedPosition.value?.team_name ?? '');
 
 // ── UI state ────────────────────────────────────────────────────────────
 const fileInput        = ref<HTMLInputElement | null>(null);
@@ -342,6 +365,8 @@ interface ParsedHeader {
     type: string;
     yearLabel: string;
     cycleLabel: string;
+    /** Optional employee code. When given it decides the position — see resolveIds. */
+    empCode: string;
     positionName: string;
     levelName: string;
     criteriaName: string;
@@ -366,10 +391,17 @@ interface ResolvedIds {
     position_id: number | null;
     level_id: number | null;
     criteria_id: number | null;
+    /** The employee matched from empCode, when one was given. Display only. */
+    employee: PmsEmployee | null;
+    /** Position name in the file matches more than one position and no emp_code narrowed it down. */
+    positionAmbiguous: boolean;
 }
 
 const parsed     = ref<ParsedAssessment | null>(null);
-const resolvedIds = ref<ResolvedIds>({ year_id: null, cycle_id: null, position_id: null, level_id: null, criteria_id: null });
+const resolvedIds = ref<ResolvedIds>({
+    year_id: null, cycle_id: null, position_id: null, level_id: null, criteria_id: null,
+    employee: null, positionAmbiguous: false,
+});
 
 const kpiWeightSum  = computed(() => (parsed.value?.kpis ?? []).reduce((s, r) => s + r.weight, 0));
 const compWeightSum = computed(() => (parsed.value?.competencies ?? []).reduce((s, r) => s + r.weight, 0));
@@ -385,7 +417,12 @@ const validationErrors = computed(() => {
         errs.push(`ประเภท "${h.type}" ไม่ถูกต้อง (ใช้ annual_supervisor หรือ competency_360)`);
     if (!resolvedIds.value.year_id) errs.push(`รอบปีการประเมิน "${h.yearLabel}" ไม่พบในระบบ`);
     if (!resolvedIds.value.cycle_id) errs.push(`รอบการประเมิน "${h.cycleLabel}" ไม่พบในระบบ (หรือไม่ตรงกับปีที่เลือก)`);
-    if (!resolvedIds.value.position_id) errs.push(`ตำแหน่ง "${h.positionName}" ไม่พบในระบบ`);
+    if (h.empCode && !resolvedIds.value.employee)
+        errs.push(`รหัสพนักงาน "${h.empCode}" ไม่พบในระบบ`);
+    else if (resolvedIds.value.positionAmbiguous)
+        errs.push(`ตำแหน่ง "${h.positionName}" มีหลายรายการในระบบ (คนละทีม) กรุณาระบุ "${HEADER_KEY_EMP_CODE}" เพื่อเลือกให้ถูกตัว`);
+    else if (!resolvedIds.value.position_id)
+        errs.push(`ตำแหน่ง "${h.positionName}" ไม่พบในระบบ`);
 
     if (h.type !== 'competency_360') {
         if (parsed.value.kpis.length === 0) errs.push('ต้องมี KPI อย่างน้อย 1 รายการ');
@@ -434,8 +471,28 @@ function resolveIds(h: ParsedHeader): ResolvedIds {
     const cyc = yid ? cycleOptions.value.find(c => c.year_id === yid && c.cycle_label === h.cycleLabel) : null;
     const cid = cyc?.id ?? null;
 
-    const pos = positionOptions.value.find(p => p.name === h.positionName);
-    const pid = pos?.id ?? null;
+    // Position resolution. Several positions share a name across teams
+    // ("Vice President" exists 6 times), and matching by name alone silently
+    // picked the first one — which then showed the wrong team everywhere the
+    // assessment appears. An employee code pins it down exactly; without one,
+    // a duplicated name is reported as ambiguous instead of guessed at.
+    const emp = h.empCode
+        ? employeeOptions.value.find(e => e.emp_code.toLowerCase() === h.empCode.toLowerCase()) ?? null
+        : null;
+
+    const namedPositions = h.positionName
+        ? positionOptions.value.filter(p => p.name === h.positionName)
+        : [];
+
+    let pid: number | null = null;
+    let ambiguous = false;
+    if (emp) {
+        pid = emp.position_id;
+    } else if (namedPositions.length === 1) {
+        pid = namedPositions[0].id;
+    } else if (namedPositions.length > 1) {
+        ambiguous = true;
+    }
 
     const lv = h.levelName ? levelOptions.value.find(l => l.name === h.levelName) : null;
     const lid = lv?.id ?? null;
@@ -443,7 +500,10 @@ function resolveIds(h: ParsedHeader): ResolvedIds {
     const cr = h.criteriaName ? criteriaOptions.value.find(c => c.name === h.criteriaName) : null;
     const crid = cr?.id ?? null;
 
-    return { year_id: yid, cycle_id: cid, position_id: pid, level_id: lid, criteria_id: crid };
+    return {
+        year_id: yid, cycle_id: cid, position_id: pid, level_id: lid, criteria_id: crid,
+        employee: emp, positionAmbiguous: ambiguous,
+    };
 }
 
 // ── HEADER KEYS — must match the template ──────────────────────────────
@@ -451,6 +511,7 @@ const HEADER_KEY_NAME       = 'ชื่อแบบประเมิน';
 const HEADER_KEY_TYPE       = 'ประเภท';
 const HEADER_KEY_YEAR       = 'รอบปีการประเมิน (ปี พ.ศ.)';
 const HEADER_KEY_CYCLE      = 'รอบการประเมิน';
+const HEADER_KEY_EMP_CODE   = 'รหัสพนักงาน';
 const HEADER_KEY_POSITION   = 'ตำแหน่ง';
 const HEADER_KEY_LEVEL      = 'ระดับตำแหน่ง';
 const HEADER_KEY_CRITERIA   = 'เกณฑ์การประเมิน';
@@ -470,6 +531,7 @@ function parseHeaderSheet(ws: XLSX.WorkSheet): ParsedHeader {
         type:             kvMap[HEADER_KEY_TYPE] ?? 'annual_supervisor',
         yearLabel:        kvMap[HEADER_KEY_YEAR] ?? '',
         cycleLabel:       kvMap[HEADER_KEY_CYCLE] ?? '',
+        empCode:          (kvMap[HEADER_KEY_EMP_CODE] ?? '').trim(),
         positionName:     kvMap[HEADER_KEY_POSITION] ?? '',
         levelName:        kvMap[HEADER_KEY_LEVEL] ?? '',
         criteriaName:     kvMap[HEADER_KEY_CRITERIA] ?? '',
@@ -626,7 +688,8 @@ const downloadTemplate = () => {
         [HEADER_KEY_TYPE,     'annual_supervisor'],
         [HEADER_KEY_YEAR,     '2569'],
         [HEADER_KEY_CYCLE,    '1/2569'],
-        [HEADER_KEY_POSITION, '(ชื่อตำแหน่งที่ตรงกับในระบบ)'],
+        [HEADER_KEY_EMP_CODE, '(รหัสพนักงาน เช่น GEC001 — แนะนำให้ใส่ ระบบจะใช้ตำแหน่งของพนักงานคนนี้)'],
+        [HEADER_KEY_POSITION, '(ชื่อตำแหน่งที่ตรงกับในระบบ — ใช้เมื่อไม่ได้ระบุรหัสพนักงาน)'],
         [HEADER_KEY_LEVEL,    '(ชื่อระดับตำแหน่ง หรือเว้นว่าง)'],
         [HEADER_KEY_CRITERIA, '(ชื่อเกณฑ์การประเมิน หรือเว้นว่าง)'],
         [HEADER_KEY_KPI_W,    '50'],
@@ -672,18 +735,20 @@ const downloadTemplate = () => {
 // ── Load master data on mount ────────────────────────────────────────────
 onMounted(async () => {
     try {
-        const [y, c, p, l, cr] = await Promise.all([
+        const [y, c, p, l, cr, e] = await Promise.all([
             yearsApi.list({ limit: 200 }),
             cyclesApi.list({ limit: 500 }),
             positionsApi.list({ limit: 500 }),
             levelsApi.list({ limit: 100 }),
             criteriaApi.list({ limit: 200 }),
+            employeesApi.list({ limit: 1000 }),
         ]);
         yearOptions.value     = y.data;
         cycleOptions.value    = c.data;
         positionOptions.value = p.data;
         levelOptions.value    = l.data;
         criteriaOptions.value = cr.data;
+        employeeOptions.value = e.data;
     } catch (e) {
         console.warn('[assessment/import] failed to load masters', e);
     }

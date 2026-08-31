@@ -40,6 +40,32 @@
             <button class="text-red-500 hover:text-red-700" @click="serverError = ''">×</button>
         </div>
 
+        <!-- ── Validation banner: blocks submit until every item is scored ── -->
+        <div v-if="showValidation && !isComplete" class="mb-5 flex items-center gap-4 rounded-xl border border-red-300 bg-red-50 px-5 py-4">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
+                    <line x1="12" y1="7" x2="12" y2="13" stroke-linecap="round"/>
+                    <line x1="12" y1="17" x2="12" y2="17" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-bold text-red-700">ไม่สามารถส่งแบบประเมินได้</p>
+                <p class="text-xs text-red-600">กรุณาให้คะแนนให้ครบทุกข้อก่อนส่งแบบประเมิน</p>
+            </div>
+            <p class="shrink-0 text-sm text-red-700">
+                ตอบแล้ว <span class="font-bold">{{ answeredCount }}/{{ requiredTotal }}</span> ข้อ
+                <span class="mx-1.5 text-red-300">•</span>
+                ยังไม่ครบ <span class="font-bold">{{ missingRows.length }}</span> ข้อ
+            </p>
+            <button
+                type="button"
+                class="shrink-0 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+                @click="scrollToFirstMissing"
+            >
+                ไปยังข้อที่ยังไม่ได้ตอบ
+            </button>
+        </div>
+
         <!-- ── Section: ข้อมูลแบบประเมิน ── -->
         <div class="mb-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <div class="mb-4">
@@ -162,17 +188,29 @@
                             <th class="w-12 px-3 py-3 text-center font-semibold text-gray-700">ข้อที่</th>
                             <th class="w-28 px-3 py-3 text-center font-semibold text-gray-700">หัวข้อ</th>
                             <th class="px-3 py-3 text-left font-semibold text-gray-700">รายละเอียด</th>
-                            <th class="w-20 px-3 py-3 text-center font-semibold text-gray-700">เป้าหมาย</th>
-                            <th v-for="n in 5" :key="n" class="w-20 px-2 py-3 text-center font-semibold text-gray-700">{{ n }}</th>
-                            <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">ไม่สามารถ<br>ประเมินได้</th>
+                            <th class="w-20 px-3 py-3 text-center font-semibold text-gray-700">เป้าหมาย<span class="text-red-500">*</span></th>
+                            <th v-for="n in 5" :key="n" class="w-20 px-2 py-3 text-center font-semibold text-gray-700">{{ n }}<br><span class="text-red-500">*</span></th>
+                            <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">ไม่สามารถ<br>ประเมินได้<br><span class="text-red-500">*</span></th>
+                            <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">Comment<br>เพิ่มเติม</th>
                             <th v-if="isExecutive" class="w-16 px-2 py-3 text-center font-semibold text-gray-700">คะแนน</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(kpi, idx) in kpiRows" :key="idx" class="border-b border-gray-100 hover:bg-gray-50" :class="kpi.closed ? 'opacity-60' : ''">
+                        <tr
+                            v-for="(kpi, idx) in kpiRows"
+                            :key="idx"
+                            :id="`row-kpi-${idx}`"
+                            class="border-b border-gray-100"
+                            :class="[kpi.closed ? 'opacity-60' : '', isRowMissing(kpi) ? 'bg-red-50 ring-1 ring-inset ring-red-300' : 'hover:bg-gray-50']"
+                        >
                             <td class="px-3 py-3 text-center font-medium text-gray-600">{{ idx + 1 }}</td>
                             <td class="px-3 py-3 text-center font-medium text-gray-800">{{ kpi.subject }}</td>
-                            <td class="px-3 py-3 text-gray-700 text-xs leading-relaxed">{{ kpi.detail }}</td>
+                            <td class="px-3 py-3 text-gray-700 text-xs leading-relaxed">
+                                {{ kpi.detail }}
+                                <p v-if="isRowMissing(kpi)" class="mt-2 text-xs font-medium text-red-600">
+                                    กรุณาเลือกระดับคะแนน 1–5 หรือ "ไม่สามารถประเมินได้"
+                                </p>
+                            </td>
                             <td class="px-3 py-3 text-center font-semibold text-gray-700">{{ kpi.target }}</td>
                             <td v-for="n in 5" :key="n" class="px-2 py-3 text-center align-top">
                                 <div class="flex flex-col items-center gap-1">
@@ -196,6 +234,20 @@
                                     :disabled="kpi.closed"
                                     class="h-4 w-4 cursor-pointer accent-blue-600"
                                 />
+                            </td>
+                            <td class="px-2 py-3 text-center align-top">
+                                <button
+                                    type="button"
+                                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-40"
+                                    :class="kpi.comment ? 'border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100' : 'border-gray-200 bg-white text-gray-400 hover:bg-gray-50'"
+                                    :disabled="kpi.closed || readonly"
+                                    :title="kpi.comment || 'เพิ่ม Comment'"
+                                    @click="openComment(kpi)"
+                                >
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-4.6A8 8 0 0 1 3 12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
                             </td>
                             <td v-if="isExecutive" class="px-2 py-3 text-center font-semibold text-gray-700">{{ kpi.managerScore }}</td>
                         </tr>
@@ -222,17 +274,27 @@
                         <tr class="border-b border-gray-200 bg-gray-50">
                             <th class="w-12 px-3 py-3 text-center font-semibold text-gray-700">ข้อที่</th>
                             <th class="w-40 px-3 py-3 text-left font-semibold text-gray-700">หัวข้อ</th>
-                            <th class="w-16 px-3 py-3 text-center font-semibold text-gray-700">เป้าหมาย</th>
-                            <th v-for="n in 5" :key="n" class="px-3 py-3 text-center font-semibold text-gray-700 min-w-[130px]">ระดับ {{ n }}</th>
-                            <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">ไม่สามารถ<br>ประเมินได้</th>
+                            <th class="w-16 px-3 py-3 text-center font-semibold text-gray-700">เป้าหมาย<span class="text-red-500">*</span></th>
+                            <th v-for="n in 5" :key="n" class="px-3 py-3 text-center font-semibold text-gray-700 min-w-[130px]">ระดับ {{ n }}<span class="text-red-500">*</span></th>
+                            <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">ไม่สามารถ<br>ประเมินได้<br><span class="text-red-500">*</span></th>
+                            <th class="w-24 px-2 py-3 text-center font-semibold text-gray-700 text-xs">Comment<br>เพิ่มเติม</th>
                             <th v-if="isExecutive" class="w-16 px-2 py-3 text-center font-semibold text-gray-700">คะแนน</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(comp, idx) in competencyRows" :key="idx" class="border-b border-gray-100 hover:bg-gray-50" :class="comp.closed ? 'opacity-60' : ''">
+                        <tr
+                            v-for="(comp, idx) in competencyRows"
+                            :key="idx"
+                            :id="`row-comp-${idx}`"
+                            class="border-b border-gray-100"
+                            :class="[comp.closed ? 'opacity-60' : '', isRowMissing(comp) ? 'bg-red-50 ring-1 ring-inset ring-red-300' : 'hover:bg-gray-50']"
+                        >
                             <td class="px-3 py-4 text-center font-medium text-gray-600 align-top">{{ idx + 1 }}</td>
                             <td class="px-3 py-4 align-top">
                                 <p class="text-xs font-medium text-gray-800 whitespace-pre-line leading-relaxed">{{ comp.subject }}</p>
+                                <p v-if="isRowMissing(comp)" class="mt-2 text-xs font-medium text-red-600">
+                                    กรุณาเลือกระดับคะแนน 1–5 หรือ "ไม่สามารถประเมินได้"
+                                </p>
                             </td>
                             <td class="px-3 py-4 text-center font-semibold text-gray-700 align-top">{{ comp.target }}</td>
                             <td v-for="n in 5" :key="n" class="px-3 py-4 text-center align-top">
@@ -257,6 +319,20 @@
                                     :disabled="comp.closed"
                                     class="h-4 w-4 cursor-pointer accent-blue-600"
                                 />
+                            </td>
+                            <td class="px-2 py-4 text-center align-top">
+                                <button
+                                    type="button"
+                                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-40"
+                                    :class="comp.comment ? 'border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100' : 'border-gray-200 bg-white text-gray-400 hover:bg-gray-50'"
+                                    :disabled="comp.closed || readonly"
+                                    :title="comp.comment || 'เพิ่ม Comment'"
+                                    @click="openComment(comp)"
+                                >
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-4.6A8 8 0 0 1 3 12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
                             </td>
                             <td v-if="isExecutive" class="px-2 py-4 text-center font-semibold text-gray-700 align-top">{{ comp.managerScore }}</td>
                         </tr>
@@ -330,7 +406,7 @@
         </div>
 
         <!-- ── Action Buttons ── -->
-        <div v-if="!readonly" class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+        <div v-if="!readonly" class="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
             <button
                 v-if="profile?.role !== 'admin'"
                 type="button"
@@ -357,6 +433,26 @@
                     <path d="M17 21v-8H7v8M7 3v5h8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 บันทึกร่าง
+            </button>
+            <!-- Preview the evaluator's own scores without saving anything -->
+            <button
+                v-if="profile?.role !== 'admin'"
+                type="button"
+                class="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                style="background:#7c3aed;"
+                @click="showCalcModal = true"
+            >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="2" width="16" height="20" rx="2"/>
+                    <line x1="8" y1="6" x2="16" y2="6" stroke-linecap="round"/>
+                    <line x1="8" y1="11" x2="8" y2="11" stroke-linecap="round" stroke-width="2.5"/>
+                    <line x1="12" y1="11" x2="12" y2="11" stroke-linecap="round" stroke-width="2.5"/>
+                    <line x1="16" y1="11" x2="16" y2="11" stroke-linecap="round" stroke-width="2.5"/>
+                    <line x1="8" y1="15" x2="8" y2="15" stroke-linecap="round" stroke-width="2.5"/>
+                    <line x1="12" y1="15" x2="12" y2="15" stroke-linecap="round" stroke-width="2.5"/>
+                    <line x1="16" y1="15" x2="16" y2="18" stroke-linecap="round" stroke-width="2.5"/>
+                </svg>
+                คำนวณคะแนน
             </button>
             <!-- Admin-only: revert a sent evaluation back to draft so the owner can re-edit -->
             <button
@@ -386,9 +482,119 @@
                 </svg>
                 ล้าง
             </button>
+            <p v-if="profile?.role !== 'admin' && requiredTotal > 0" class="w-full text-xs text-red-500">
+                * ทุกข้อจำเป็นต้องเลือก 1 ตัวเลือก (1–5 หรือ ไม่สามารถประเมินได้)
+            </p>
         </div>
         <div v-else class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-center text-sm text-amber-700">
             โหมดดูอย่างเดียว — แบบประเมินถูกล็อกแล้ว
+        </div>
+
+        <!-- ── Per-item comment modal ──────────────────────────────────────
+             Edits the row in memory only; the text is persisted with the rest
+             of the evaluation on บันทึกร่าง / ส่งแบบประเมิน. -->
+        <div
+            v-if="commentTarget"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            @click.self="cancelComment"
+        >
+            <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+                <div class="mb-4 flex items-start gap-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2">
+                            <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-4.6A8 8 0 0 1 3 12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-gray-800">Comment เพิ่มเติม</h3>
+                        <p class="whitespace-pre-line text-xs leading-relaxed text-gray-500">{{ commentSubject }}</p>
+                    </div>
+                </div>
+
+                <textarea
+                    v-model="commentDraft"
+                    rows="6"
+                    maxlength="2000"
+                    placeholder="ระบุ Comment เพิ่มเติม"
+                    class="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                ></textarea>
+                <p class="mt-1 text-right text-xs text-gray-400">{{ commentDraft.length }}/2000</p>
+
+                <div class="mt-4 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="rounded-lg border border-gray-200 bg-gray-50 px-5 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
+                        @click="cancelComment"
+                    >
+                        ยกเลิก
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                        style="background:#4361ee;"
+                        @click="saveComment"
+                    >
+                        บันทึก
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Score preview modal ─────────────────────────────────────────
+             Read-only view of what the current selections add up to. Uses the
+             same formula as pms_evaluation_upsert, so the numbers match what
+             the DB will store on save. Nothing here mutates the form. -->
+        <div
+            v-if="showCalcModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            @click.self="showCalcModal = false"
+        >
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                <div class="mb-5 flex items-start gap-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full" style="background:#ede9fe;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2">
+                            <rect x="4" y="2" width="16" height="20" rx="2"/>
+                            <line x1="8" y1="6" x2="16" y2="6" stroke-linecap="round"/>
+                            <line x1="16" y1="15" x2="16" y2="18" stroke-linecap="round" stroke-width="2.5"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">ผลการคำนวณคะแนน</h3>
+                        <p class="text-xs text-gray-500">คำนวณจากคำตอบปัจจุบัน ยังไม่ได้บันทึก</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between rounded-xl border border-amber-200 px-5 py-4" style="background:#fef9c3;">
+                        <span class="text-sm font-semibold text-amber-700">คะแนนการประเมิน KPI</span>
+                        <span class="text-2xl font-bold text-amber-700">{{ fmtScore(previewKpi) }}</span>
+                    </div>
+                    <div class="flex items-center justify-between rounded-xl border border-blue-200 px-5 py-4" style="background:#dbeafe;">
+                        <span class="text-sm font-semibold text-blue-700">คะแนนการประเมิน Competency</span>
+                        <span class="text-2xl font-bold text-blue-700">{{ fmtScore(previewCompetency) }}</span>
+                    </div>
+                    <div class="flex items-center justify-between rounded-xl border border-green-200 px-5 py-4" style="background:#dcfce7;">
+                        <span class="text-sm font-semibold text-green-700">ผลการประเมินรวม</span>
+                        <span class="text-2xl font-bold text-green-700">{{ fmtScore(previewTotal) }}</span>
+                    </div>
+                </div>
+
+                <div v-if="!isComplete" class="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
+                    คำนวณจาก <span class="font-bold">{{ answeredCount }}/{{ requiredTotal }}</span> ข้อที่ตอบแล้ว
+                    — ยังไม่ครบ <span class="font-bold">{{ missingRows.length }}</span> ข้อ
+                    ค่านี้เป็นค่าชั่วคราว จะเปลี่ยนเมื่อให้คะแนนครบ
+                </div>
+
+                <div class="mt-5 flex justify-end">
+                    <button
+                        type="button"
+                        class="rounded-lg border border-gray-200 bg-gray-50 px-6 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
+                        @click="showCalcModal = false"
+                    >
+                        ปิด
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Toast -->
@@ -402,7 +608,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, reactive, onMounted } from 'vue';
+import { ref, computed, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { PmsApiError } from '@/composables/usePmsApi';
 import type { PmsEvaluation, PmsEvaluationRole } from '@/composables/usePmsEvaluations';
@@ -482,6 +688,8 @@ interface KpiRow {
     selected: number;        // 0 = N/A, 1-5 = ระดับ, -1 = ยังไม่เลือก
     closed: boolean;
     managerScore: number | string;
+    /** Free-text note for this item. Saved with the evaluation; '' means none. */
+    comment: string;
 }
 interface CompetencyRow {
     competency_id: number;
@@ -492,6 +700,7 @@ interface CompetencyRow {
     selected: number;
     closed: boolean;
     managerScore: number | string;
+    comment: string;
 }
 const kpiRows        = ref<KpiRow[]>([]);
 const competencyRows = ref<CompetencyRow[]>([]);
@@ -531,6 +740,118 @@ const serverError  = ref('');
 const showToast    = ref(false);
 const toastMessage = ref('');
 
+// ── Required-score validation ───────────────────────────────────────────
+// Every KPI and Competency row must carry a selection (1-5 = ระดับ, 0 =
+// "ไม่สามารถประเมินได้") before the evaluation can be sent. Rows flagged
+// `closed` are disabled in the form, so they are excluded from the count —
+// otherwise a locked item would block submission forever.
+// Draft saves are never validated. The backend re-checks on status='sent'.
+
+/** Turns on after the first blocked submit — keeps the form clean until then. */
+const showValidation = ref(false);
+
+type ScorableRow = { selected: number; closed: boolean };
+
+/** Rows that must be answered — excludes `closed` ones. */
+const requiredRows = computed<ScorableRow[]>(() => [
+    ...kpiRows.value.filter(r => !r.closed),
+    ...competencyRows.value.filter(r => !r.closed),
+]);
+const requiredTotal = computed(() => requiredRows.value.length);
+const missingRows   = computed(() => requiredRows.value.filter(r => r.selected < 0));
+const answeredCount = computed(() => requiredTotal.value - missingRows.value.length);
+const isComplete    = computed(() => missingRows.value.length === 0);
+
+/** Highlights a single row once validation is on. */
+function isRowMissing(row: ScorableRow): boolean {
+    return showValidation.value && !row.closed && row.selected < 0;
+}
+
+/** DOM id of the first unanswered row — KPI section first, then Competency. */
+function firstMissingElementId(): string | null {
+    const kpiIdx = kpiRows.value.findIndex(r => !r.closed && r.selected < 0);
+    if (kpiIdx >= 0) return `row-kpi-${kpiIdx}`;
+    const compIdx = competencyRows.value.findIndex(r => !r.closed && r.selected < 0);
+    if (compIdx >= 0) return `row-comp-${compIdx}`;
+    return null;
+}
+
+function scrollToFirstMissing() {
+    const id = firstMissingElementId();
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    (el.querySelector('input[type="radio"]:not(:disabled)') as HTMLInputElement | null)?.focus({ preventScroll: true });
+}
+
+// ── Score preview (client-side mirror of pms_evaluation_upsert) ─────────
+// The RPC computes, per item: score = selected_option / 5 * 100, skipping
+// closed rows and "ไม่สามารถประเมินได้" (0). Section score is the weighted
+// mean over the items that produced a score; the total weights the two
+// sections by the assessment's kpi_weight / competency_weight (0-100).
+// Reproduced here so the evaluator can preview without saving. Any change to
+// the RPC formula must be mirrored here.
+const showCalcModal = ref(false);
+/** Assessment header ratios (0-100), captured in loadAll. */
+const assessmentKpiWeight  = ref(0);
+const assessmentCompWeight = ref(0);
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Per-item score 0-100, or null when the item does not count. */
+function itemScore(row: { selected: number; closed: boolean }): number | null {
+    if (row.closed || row.selected <= 0) return null;
+    return round2((row.selected / 5) * 100);
+}
+
+/** Weighted mean over the scoring rows. null when nothing counts. */
+function sectionScore(rows: { selected: number; closed: boolean; weight: number }[]): number | null {
+    let total = 0;
+    let weightSum = 0;
+    for (const r of rows) {
+        const s = itemScore(r);
+        if (s === null) continue;
+        total += s * r.weight;
+        weightSum += r.weight;
+    }
+    return weightSum > 0 ? round2(total / weightSum) : null;
+}
+
+const previewKpi        = computed(() => sectionScore(kpiRows.value));
+const previewCompetency = computed(() => sectionScore(competencyRows.value));
+const previewTotal = computed(() => {
+    // Matches the RPC: a null section counts as 0 rather than dropping out.
+    if (previewKpi.value === null && previewCompetency.value === null) return null;
+    return round2(
+        ((previewKpi.value ?? 0) * assessmentKpiWeight.value +
+            (previewCompetency.value ?? 0) * assessmentCompWeight.value) / 100,
+    );
+});
+
+const fmtScore = (n: number | null) => (n === null ? '—' : n.toFixed(2));
+
+// ── Per-item comment ────────────────────────────────────────────────────
+// Each KPI/competency carries an optional free-text note. The icon in the
+// table opens this modal; the text lives on the row until the evaluation is
+// saved (draft or sent), where buildPayload sends it along with the score.
+const commentTarget = ref<KpiRow | CompetencyRow | null>(null);
+const commentDraft  = ref('');
+/** Heading shown in the modal — the item's own subject. */
+const commentSubject = computed(() => commentTarget.value?.subject ?? '');
+
+function openComment(row: KpiRow | CompetencyRow) {
+    commentTarget.value = row;
+    commentDraft.value  = row.comment;
+}
+function saveComment() {
+    if (commentTarget.value) commentTarget.value.comment = commentDraft.value.trim();
+    commentTarget.value = null;
+}
+function cancelComment() {
+    commentTarget.value = null;
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────
 function getEvalByRole(role: PmsEvaluationRole, empId?: number | null): PmsEvaluation | undefined {
     return allEvaluations.value.find(e =>
@@ -553,8 +874,8 @@ function statusLabel(status: string): string {
 function applyMyEvaluationToRows() {
     const myEval = getEvalByRole(evaluatorRole.value, myEmpId.value);
     // reset row selections first
-    kpiRows.value.forEach(r => { r.selected = -1; r.closed = false; });
-    competencyRows.value.forEach(r => { r.selected = -1; r.closed = false; });
+    kpiRows.value.forEach(r => { r.selected = -1; r.closed = false; r.comment = ''; });
+    competencyRows.value.forEach(r => { r.selected = -1; r.closed = false; r.comment = ''; });
     managerRecommend.value = null;
     executiveVerdict.value = null;
 
@@ -568,26 +889,28 @@ function applyMyEvaluationToRows() {
     myEvalId.value = myEval.id;
     isSent.value   = myEval.status === 'sent';
 
-    const kpiMap = new Map<number, { selected_option: number | null; is_closed: boolean }>();
+    const kpiMap = new Map<number, { selected_option: number | null; is_closed: boolean; comment: string | null }>();
     for (const s of myEval.kpi_scores ?? []) {
-        kpiMap.set(s.kpi_id, { selected_option: s.selected_option, is_closed: s.is_closed });
+        kpiMap.set(s.kpi_id, { selected_option: s.selected_option, is_closed: s.is_closed, comment: s.comment });
     }
     for (const row of kpiRows.value) {
         const m = kpiMap.get(row.kpi_id);
         if (m) {
             row.selected = m.selected_option ?? -1;
             row.closed   = m.is_closed;
+            row.comment  = m.comment ?? '';
         }
     }
-    const compMap = new Map<number, { selected_option: number | null; is_closed: boolean }>();
+    const compMap = new Map<number, { selected_option: number | null; is_closed: boolean; comment: string | null }>();
     for (const s of myEval.competency_scores ?? []) {
-        compMap.set(s.competency_id, { selected_option: s.selected_option, is_closed: s.is_closed });
+        compMap.set(s.competency_id, { selected_option: s.selected_option, is_closed: s.is_closed, comment: s.comment });
     }
     for (const row of competencyRows.value) {
         const m = compMap.get(row.competency_id);
         if (m) {
             row.selected = m.selected_option ?? -1;
             row.closed   = m.is_closed;
+            row.comment  = m.comment ?? '';
         }
     }
 
@@ -750,6 +1073,10 @@ async function loadAll() {
         const aRes = await assessmentsApi.get(targetAssessmentId);
         const a = aRes.data;
 
+        // Section ratios (0-100) — feed the score preview modal.
+        assessmentKpiWeight.value  = Number(a.kpi_weight) || 0;
+        assessmentCompWeight.value = Number(a.competency_weight) || 0;
+
         // peer and subordinate raters evaluate competencies only.
         // self/manager/executive/ceo see both KPI and competency sections.
         const skipKpi = evaluatorRole.value === 'peer' || evaluatorRole.value === 'subordinate';
@@ -763,6 +1090,7 @@ async function loadAll() {
             selected:  -1,
             closed:    false,
             managerScore: '-',
+            comment:   '',
         }));
         competencyRows.value = (a.competencies ?? []).map(c => ({
             competency_id: c.id ?? 0,
@@ -773,6 +1101,7 @@ async function loadAll() {
             selected:      -1,
             closed:        false,
             managerScore:  '-',
+            comment:       '',
         }));
 
         const evRes = await evaluationsApi.bySend(sendId.value);
@@ -832,11 +1161,13 @@ function buildPayload(status: 'draft' | 'sent') {
             kpi_id: r.kpi_id,
             selected_option: r.selected >= 0 ? r.selected : null,
             is_closed: r.closed,
+            comment: r.comment.trim() || null,
         })),
         competency_scores: competencyRows.value.map(r => ({
             competency_id: r.competency_id,
             selected_option: r.selected >= 0 ? r.selected : null,
             is_closed: r.closed,
+            comment: r.comment.trim() || null,
         })),
     };
 }
@@ -879,7 +1210,18 @@ async function saveAndReload(status: 'draft' | 'sent') {
     }
 }
 
-const handleSubmit    = () => saveAndReload('sent');
+const handleSubmit = () => {
+    // Block the send when any required item is unscored. Nothing is sent to the
+    // API — the banner + row highlights point the user at what is missing.
+    if (!isComplete.value) {
+        showValidation.value = true;
+        nextTick(scrollToFirstMissing);
+        return;
+    }
+    showValidation.value = false;
+    return saveAndReload('sent');
+};
+// Drafts save regardless of completeness.
 const handleSaveDraft = () => saveAndReload('draft');
 
 // Admin-only: flip a sent evaluation back to draft so its owner can re-edit.
@@ -904,11 +1246,24 @@ const handleRevert = async () => {
 };
 
 const handleClear = () => {
-    kpiRows.value.forEach(r => { r.selected = -1; r.closed = false; });
-    competencyRows.value.forEach(r => { r.selected = -1; r.closed = false; });
+    kpiRows.value.forEach(r => { r.selected = -1; r.closed = false; r.comment = ''; });
+    competencyRows.value.forEach(r => { r.selected = -1; r.closed = false; r.comment = ''; });
     managerRecommend.value = null;
     executiveVerdict.value = null;
+    showValidation.value = false;
+    showCalcModal.value = false;
 };
 
-onMounted(() => loadAll());
+function onEsc(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return;
+    // Comment modal sits on top — close that first, and discard its edits.
+    if (commentTarget.value) cancelComment();
+    else showCalcModal.value = false;
+}
+
+onMounted(() => {
+    window.addEventListener('keydown', onEsc);
+    loadAll();
+});
+onBeforeUnmount(() => window.removeEventListener('keydown', onEsc));
 </script>
