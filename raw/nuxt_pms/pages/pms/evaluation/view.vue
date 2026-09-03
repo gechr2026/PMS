@@ -107,6 +107,31 @@
                 </div>
             </div>
 
+            <!-- สรุปคะแนนและเกรด -->
+            <div class="mb-4 overflow-hidden rounded-xl text-white shadow-sm" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+                <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm font-bold">สรุปคะแนนและเกรด</p>
+                        <p class="mt-0.5 text-xs opacity-80">คะแนนรวมเต็ม 100 คะแนน</p>
+                        <p class="mt-1 text-4xl font-bold tracking-tight">
+                            {{ formatScore(summaryTotalAvg) }}<span class="ml-1 text-lg font-semibold opacity-75">/ 100</span>
+                        </p>
+                        <p class="mt-1 text-xs opacity-80">
+                            คะแนนเฉลี่ย {{ formatScore(rawAvgOn5Scale) }} จาก 5 × 20 = {{ formatScore(summaryTotalAvg) }} คะแนน
+                        </p>
+                    </div>
+                    <div v-if="data.summary.final_grade" class="flex h-24 w-24 flex-shrink-0 flex-col items-center justify-center rounded-2xl bg-violet-900/40">
+                        <p class="text-xs font-semibold opacity-90">เกรด</p>
+                        <p class="text-4xl font-bold">{{ data.summary.final_grade }}</p>
+                    </div>
+                </div>
+                <div v-if="criteriaGrades.length > 0" class="flex flex-wrap items-center divide-x divide-dashed divide-white/30 border-t border-white/20 px-5 py-3 text-xs font-semibold">
+                    <span v-for="g in criteriaGrades" :key="g.grade" class="px-3 first:pl-0">
+                        {{ g.grade }} {{ gradeRangeLabel(g) }}
+                    </span>
+                </div>
+            </div>
+
             <!-- Per-role aggregates (360°) — peer mean / subordinate mean / etc. -->
             <div v-if="perRoleStats.length > 0" class="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div class="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -180,31 +205,6 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
-
-            <!-- สรุปคะแนนและเกรด -->
-            <div class="mb-4 overflow-hidden rounded-xl text-white shadow-sm" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
-                <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-sm font-bold">สรุปคะแนนและเกรด</p>
-                        <p class="mt-0.5 text-xs opacity-80">คะแนนรวมเต็ม 100 คะแนน</p>
-                        <p class="mt-1 text-4xl font-bold tracking-tight">
-                            {{ formatScore(summaryTotalAvg) }}<span class="ml-1 text-lg font-semibold opacity-75">/ 100</span>
-                        </p>
-                        <p class="mt-1 text-xs opacity-80">
-                            คะแนนเฉลี่ย {{ formatScore(rawAvgOn5Scale) }} จาก 5 × 20 = {{ formatScore(summaryTotalAvg) }} คะแนน
-                        </p>
-                    </div>
-                    <div v-if="data.summary.final_grade" class="flex h-24 w-24 flex-shrink-0 flex-col items-center justify-center rounded-2xl bg-violet-900/40">
-                        <p class="text-xs font-semibold opacity-90">เกรด</p>
-                        <p class="text-4xl font-bold">{{ data.summary.final_grade }}</p>
-                    </div>
-                </div>
-                <div v-if="criteriaGrades.length > 0" class="flex flex-wrap items-center divide-x divide-dashed divide-white/30 border-t border-white/20 px-5 py-3 text-xs font-semibold">
-                    <span v-for="g in criteriaGrades" :key="g.grade" class="px-3 first:pl-0">
-                        {{ g.grade }} {{ gradeRangeLabel(g) }}
-                    </span>
                 </div>
             </div>
 
