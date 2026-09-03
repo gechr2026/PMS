@@ -517,20 +517,14 @@ const formatScore = (n: number | null | undefined): string => {
     return Number(n).toFixed(2);
 };
 
-// ── Per-item "เฉลี่ย" excluding self + closed + N/A ──────────────────
-// Uses raw selected_option (1..5), NOT the percent-converted `score`.
-// Returns null when no rater contributed; UI shows '—' in that case.
-const itemAvgExclSelf = (item: { by_rater: PmsSummaryRater[] }): number | null => {
-    const counted = item.by_rater.filter(r =>
-        r.evaluator_role !== 'self'
-        && !r.is_closed
-        && r.selected_option !== null
-        && r.selected_option !== 0
-    );
-    if (counted.length === 0) return null;
-    const sum = counted.reduce((s, r) => s + Number(r.selected_option), 0);
-    return sum / counted.length;
-};
+// ── Score maths ──────────────────────────────────────────────────────────
+// Shared with /pms/evaluation/view so both pages report the same figures
+// for the same send. See composables/usePmsScoreBreakdown.ts.
+const { itemAvgExclSelf: avgExclSelf, computeBreakdown } = usePmsScoreBreakdown();
+
+/** Per-item "เฉลี่ย" excluding self + closed + N/A. null when nobody contributed; UI shows '—'. */
+const itemAvgExclSelf = (item: { by_rater: PmsSummaryRater[] }): number | null =>
+    avgExclSelf(item.by_rater);
 
 // คะแนนที่ได้ ต่อข้อ = avg(เฉพาะ non-self) × น้ำหนัก
 const itemEarnedScore = (item: PmsSummaryItem): number | null => {
@@ -538,16 +532,6 @@ const itemEarnedScore = (item: PmsSummaryItem): number | null => {
     if (avg === null) return null;
     return avg * Number(item.weight ?? 0);
 };
-
-// Σ คะแนนที่ได้ ของทั้ง KPI / Competency (already weighted by item.weight)
-const kpiSubtotal = computed<number>(() => {
-    if (!data.value) return 0;
-    return data.value.kpis.reduce((s, k) => s + (itemEarnedScore(k) ?? 0), 0);
-});
-const competencySubtotal = computed<number>(() => {
-    if (!data.value) return 0;
-    return data.value.competencies.reduce((s, c) => s + (itemEarnedScore(c) ?? 0), 0);
-});
 
 // Σ น้ำหนัก (ใช้แสดงในแถวสรุป)
 const kpiTotalWeight = computed<number>(() =>
@@ -561,17 +545,22 @@ const kpiHeaderRatio = computed<number>(() =>
 const competencyHeaderRatio = computed<number>(() =>
     data.value ? Number(data.value.summary.competency_weight ?? 0) : 0);
 
-// Final score = kpiSubtotal × kpi_weight/100 + compSubtotal × competency_weight/100
-const finalScore = computed<number>(() =>
-    kpiSubtotal.value * kpiHeaderRatio.value / 100
-    + competencySubtotal.value * competencyHeaderRatio.value / 100);
+// Section subtotals (1-5, weighted by item weight), the weighted result, and
+// the 100-point split — all from the shared module.
+const breakdown = computed(() => computeBreakdown({
+    kpis: data.value?.kpis ?? [],
+    competencies: data.value?.competencies ?? [],
+    kpiWeight: kpiHeaderRatio.value,
+    competencyWeight: competencyHeaderRatio.value,
+    ratersOf: item => item.by_rater ?? [],
+}));
 
-// Score out of 100: (score/5) × weight%
-const kpiScore100 = computed<number>(() =>
-    kpiSubtotal.value / 5 * kpiHeaderRatio.value);
-const compScore100 = computed<number>(() =>
-    competencySubtotal.value / 5 * competencyHeaderRatio.value);
-const score100 = computed<number>(() => kpiScore100.value + compScore100.value);
+const kpiSubtotal        = computed<number>(() => breakdown.value.kpiSubtotal);
+const competencySubtotal = computed<number>(() => breakdown.value.competencySubtotal);
+const finalScore         = computed<number>(() => breakdown.value.weightedTotal);
+const kpiScore100        = computed<number>(() => breakdown.value.kpiScore100);
+const compScore100       = computed<number>(() => breakdown.value.competencyScore100);
+const score100           = computed<number>(() => breakdown.value.score100);
 
 // ── Per-role mean (raw selected_option 1..5, not %-converted) ────────
 // Replaces values from pms_evaluation_per_role_v (which stores weighted %).

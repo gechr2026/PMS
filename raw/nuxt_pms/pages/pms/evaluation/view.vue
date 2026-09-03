@@ -91,25 +91,22 @@
             <!-- Score Boxes -->
             <div class="mb-4 grid grid-cols-3 gap-4">
                 <div class="rounded-xl p-4 text-white" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">
-                    <p class="text-xs font-semibold opacity-90">คะแนนการประเมิน KPI เฉลี่ย</p>
-                    <p class="mt-1 text-2xl font-bold">{{ formatScore(summaryKpiAvg) }}</p>
-                    <p class="mt-0.5 text-xs font-semibold opacity-90">
-                        คิดเป็น {{ formatScore(kpiEarned) }} / {{ kpiWeight }} คะแนน
-                    </p>
+                    <p class="text-xs font-semibold opacity-90">คะแนน KPI (× {{ kpiWeight }}%)</p>
+                    <p class="mt-1 text-2xl font-bold">{{ formatScore(breakdown.kpiSubtotal) }}</p>
+                    <p class="mt-0.5 text-xs opacity-80">→ {{ formatScore(breakdown.kpiSubtotal * kpiWeight / 100) }}</p>
                 </div>
                 <div class="rounded-xl p-4 text-white" style="background:linear-gradient(135deg,#3b82f6,#60a5fa);">
-                    <p class="text-xs font-semibold opacity-90">คะแนนการประเมิน Competency เฉลี่ย</p>
-                    <p class="mt-1 text-2xl font-bold">{{ formatScore(summaryCompAvg) }}</p>
-                    <p class="mt-0.5 text-xs font-semibold opacity-90">
-                        คิดเป็น {{ formatScore(compEarned) }} / {{ compWeight }} คะแนน
-                    </p>
+                    <p class="text-xs font-semibold opacity-90">คะแนน Competency (× {{ compWeight }}%)</p>
+                    <p class="mt-1 text-2xl font-bold">{{ formatScore(breakdown.competencySubtotal) }}</p>
+                    <p class="mt-0.5 text-xs opacity-80">→ {{ formatScore(breakdown.competencySubtotal * compWeight / 100) }}</p>
                 </div>
                 <div class="rounded-xl p-4 text-white" style="background:linear-gradient(135deg,#10b981,#34d399);">
-                    <p class="text-xs font-semibold opacity-90">ผลการประเมินรวมเฉลี่ย</p>
+                    <p class="text-xs font-semibold opacity-90">ผลการประเมินรวม</p>
                     <p class="mt-1 text-2xl font-bold">
-                        {{ formatScore(summaryTotalAvg) }}
+                        {{ formatScore(breakdown.weightedTotal) }}
                         <span v-if="data.summary.final_grade" class="text-base font-semibold opacity-80">({{ data.summary.final_grade }})</span>
                     </p>
+                    <p class="mt-0.5 text-xs opacity-80">KPI + Competency (ถ่วงน้ำหนัก)</p>
                 </div>
             </div>
 
@@ -120,10 +117,10 @@
                         <p class="text-sm font-bold">สรุปคะแนนและเกรด</p>
                         <p class="mt-0.5 text-xs opacity-80">คะแนนรวมเต็ม 100 คะแนน</p>
                         <p class="mt-1 text-4xl font-bold tracking-tight">
-                            {{ formatScore(score100) }}<span class="ml-1 text-lg font-semibold opacity-75">/ 100</span>
+                            {{ formatScore(breakdown.score100) }}<span class="ml-1 text-lg font-semibold opacity-75">/ 100</span>
                         </p>
                         <p class="mt-1 text-xs opacity-80">
-                            คะแนนเฉลี่ย {{ formatScore(summaryTotalAvg) }} จาก 5 × 20 = {{ formatScore(score100) }} คะแนน
+                            KPI {{ formatScore(breakdown.kpiScore100) }} + Competency {{ formatScore(breakdown.competencyScore100) }} = {{ formatScore(breakdown.score100) }} คะแนน
                         </p>
                     </div>
                     <div v-if="data.summary.final_grade" class="flex h-24 w-24 flex-shrink-0 flex-col items-center justify-center rounded-2xl bg-violet-900/40">
@@ -387,22 +384,21 @@ const loadCriteriaGrades = async (criteriaId: number) => {
 const gradeRangeLabel = (g: PmsCriteriaGrade): string =>
     g.max_score >= 100 ? `${g.min_score.toFixed(2)} ขึ้นไป` : `${g.min_score.toFixed(2)}–${g.max_score.toFixed(2)}`;
 
-// ── Section weights and the points each section actually earned ──────────
-// summaryKpiAvg / summaryCompAvg / summaryTotalAvg are on the 1-5 rating
-// scale (they average selected_option, not the 0-100 item score). The
-// assessment splits 100 points between the two sections via kpi_weight /
-// competency_weight, so a section earns (avg / 5) x its weight.
+// ── Headline scores ──────────────────────────────────────────────────────
+// Shared with /pms/summary/view so both pages report the same figures for
+// the same send — they used to compute this separately and disagreed.
+const { computeBreakdown } = usePmsScoreBreakdown();
+
 const kpiWeight  = computed<number>(() => Number(data.value?.summary.kpi_weight ?? 0));
 const compWeight = computed<number>(() => Number(data.value?.summary.competency_weight ?? 0));
 
-const kpiEarned = computed<number | null>(() =>
-    summaryKpiAvg.value === null ? null : (summaryKpiAvg.value / 5) * kpiWeight.value);
-const compEarned = computed<number | null>(() =>
-    summaryCompAvg.value === null ? null : (summaryCompAvg.value / 5) * compWeight.value);
-
-/** The overall 1-5 average expressed out of 100 — the number the grade scale is read against. */
-const score100 = computed<number | null>(() =>
-    summaryTotalAvg.value === null ? null : summaryTotalAvg.value * 20);
+const breakdown = computed(() => computeBreakdown({
+    kpis: data.value?.kpis ?? [],
+    competencies: data.value?.competencies ?? [],
+    kpiWeight: kpiWeight.value,
+    competencyWeight: compWeight.value,
+    ratersOf: item => item.by_evaluator ?? [],
+}));
 
 // ---- selected_option (1-5) computations ----
 // Per-item mean across ALL raters (includes self) — used for "คะแนนเฉลี่ย" column
@@ -517,17 +513,6 @@ const evaluatorStats = computed<EvaluatorStatRow[]>(() => {
         };
     });
 });
-
-// Top boxes = mean of role means (mirrors DB formula but in 1-5 space)
-const meanOf = (vals: Array<number | null>): number | null => {
-    const v = vals.filter((n): n is number => n !== null);
-    if (v.length === 0) return null;
-    return v.reduce((s, n) => s + n, 0) / v.length;
-};
-
-const summaryKpiAvg   = computed<number | null>(() => meanOf(perRoleStats.value.map(r => r.kpi_mean)));
-const summaryCompAvg  = computed<number | null>(() => meanOf(perRoleStats.value.map(r => r.competency_mean)));
-const summaryTotalAvg = computed<number | null>(() => meanOf(perRoleStats.value.map(r => r.total_mean)));
 
 // Bottom-3 improvements computed from itemAvgSelectedOption
 const buildImprovements = (items: PmsEvaluationResultItem[]): PmsEvaluationResultImprovement[] => {
