@@ -183,16 +183,31 @@
                 </div>
             </div>
 
-            <!-- แปลผลการประเมิน -->
-            <div v-if="data.grade_definition" class="mb-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div class="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4361ee" stroke-width="1.8">
-                        <rect x="3" y="3" width="7" height="4" rx="1"/><rect x="3" y="11" width="7" height="4" rx="1"/>
-                        <rect x="14" y="3" width="7" height="4" rx="1"/><rect x="14" y="11" width="7" height="4" rx="1"/>
-                    </svg>
-                    <span class="text-sm font-semibold text-gray-700">แปลผลการประเมิน</span>
+            <!-- สรุปคะแนนและเกรด -->
+            <div class="mb-4 overflow-hidden rounded-xl text-white shadow-sm" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+                <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm font-bold">สรุปคะแนนและเกรด</p>
+                        <p class="mt-0.5 text-xs opacity-80">คะแนนรวมเต็ม 100 คะแนน</p>
+                        <p class="mt-1 text-4xl font-bold tracking-tight">
+                            {{ formatScore(summaryTotalAvg) }}<span class="ml-1 text-lg font-semibold opacity-75">/ 100</span>
+                        </p>
+                    </div>
+                    <div v-if="data.summary.final_grade" class="flex h-24 w-24 flex-shrink-0 flex-col items-center justify-center rounded-2xl bg-white/15">
+                        <p class="text-xs font-semibold opacity-90">เกรด</p>
+                        <p class="text-4xl font-bold">{{ data.summary.final_grade }}</p>
+                    </div>
                 </div>
-                <p class="text-sm text-gray-700 leading-relaxed">{{ data.grade_definition }}</p>
+                <div v-if="criteriaGrades.length > 0" class="flex flex-wrap gap-2 border-t border-white/20 px-5 py-3">
+                    <span
+                        v-for="g in criteriaGrades"
+                        :key="g.grade"
+                        class="rounded-full px-3 py-1 text-xs font-semibold"
+                        :class="g.grade === data.summary.final_grade ? 'bg-white text-violet-700' : 'bg-white/15 text-white'"
+                    >
+                        {{ g.grade }} {{ gradeRangeLabel(g) }}
+                    </span>
+                </div>
             </div>
 
             <!-- KPI Table -->
@@ -307,12 +322,14 @@ import type {
     PmsEvaluationResultItem,
     PmsEvaluationResultImprovement,
 } from '@/composables/usePmsEvaluationResults';
+import type { PmsCriteriaGrade } from '@/composables/usePmsCriteria';
 
 useHead({ title: 'ผลการประเมิน | ระบบประเมินผลการปฏิบัติงาน' });
 definePageMeta({ layout: 'pms-layout' });
 
 const route = useRoute();
 const resultsApi = usePmsEvaluationResults();
+const criteriaApi = usePmsCriteria();
 const { profile } = useAuth();
 const MANAGER_VISIBLE_ROLES = new Set(['self', 'manager']);
 
@@ -344,6 +361,27 @@ const formatScore = (n: number | null | undefined): string => {
     if (n === null || n === undefined) return '—';
     return Number(n).toFixed(2);
 };
+
+// ── Grade breakdown for the purple summary box ───────────────────────────
+// The grade scale is per-assessment (data.summary.criteria_id), fetched
+// fresh here rather than baked into this page, so it always reflects
+// whatever pms_criteria/pms_criteria_grades currently holds.
+const criteriaGrades = ref<PmsCriteriaGrade[]>([]);
+
+const loadCriteriaGrades = async (criteriaId: number) => {
+    try {
+        const res = await criteriaApi.get(criteriaId);
+        criteriaGrades.value = [...res.data.grades].sort((a, b) => a.sort_order - b.sort_order);
+    } catch {
+        // Non-fatal: the box still shows the total score and final grade
+        // without a breakdown if the criteria lookup fails.
+        criteriaGrades.value = [];
+    }
+};
+
+/** "80.00 ขึ้นไป" for the top grade, "70.00–74.99" otherwise. */
+const gradeRangeLabel = (g: PmsCriteriaGrade): string =>
+    g.max_score >= 100 ? `${g.min_score.toFixed(2)} ขึ้นไป` : `${g.min_score.toFixed(2)}–${g.max_score.toFixed(2)}`;
 
 // ---- selected_option (1-5) computations ----
 // Per-item mean across ALL raters (includes self) — used for "คะแนนเฉลี่ย" column
@@ -540,6 +578,8 @@ const loadDetail = async () => {
     try {
         const res = await resultsApi.detail(sendId.value);
         data.value = res.data;
+        const criteriaId = res.data.summary.criteria_id;
+        if (criteriaId) await loadCriteriaGrades(criteriaId);
     } catch (e) {
         const err = e as PmsApiError;
         errorMessage.value = err.status === 404
