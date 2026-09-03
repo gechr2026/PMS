@@ -192,19 +192,17 @@
                         <p class="mt-1 text-4xl font-bold tracking-tight">
                             {{ formatScore(summaryTotalAvg) }}<span class="ml-1 text-lg font-semibold opacity-75">/ 100</span>
                         </p>
+                        <p class="mt-1 text-xs opacity-80">
+                            คะแนนเฉลี่ย {{ formatScore(rawAvgOn5Scale) }} จาก 5 × 20 = {{ formatScore(summaryTotalAvg) }} คะแนน
+                        </p>
                     </div>
-                    <div v-if="data.summary.final_grade" class="flex h-24 w-24 flex-shrink-0 flex-col items-center justify-center rounded-2xl bg-white/15">
+                    <div v-if="data.summary.final_grade" class="flex h-24 w-24 flex-shrink-0 flex-col items-center justify-center rounded-2xl bg-violet-900/40">
                         <p class="text-xs font-semibold opacity-90">เกรด</p>
                         <p class="text-4xl font-bold">{{ data.summary.final_grade }}</p>
                     </div>
                 </div>
-                <div v-if="criteriaGrades.length > 0" class="flex flex-wrap gap-2 border-t border-white/20 px-5 py-3">
-                    <span
-                        v-for="g in criteriaGrades"
-                        :key="g.grade"
-                        class="rounded-full px-3 py-1 text-xs font-semibold"
-                        :class="g.grade === data.summary.final_grade ? 'bg-white text-violet-700' : 'bg-white/15 text-white'"
-                    >
+                <div v-if="criteriaGrades.length > 0" class="flex flex-wrap items-center divide-x divide-dashed divide-white/30 border-t border-white/20 px-5 py-3 text-xs font-semibold">
+                    <span v-for="g in criteriaGrades" :key="g.grade" class="px-3 first:pl-0">
                         {{ g.grade }} {{ gradeRangeLabel(g) }}
                     </span>
                 </div>
@@ -382,6 +380,10 @@ const loadCriteriaGrades = async (criteriaId: number) => {
 /** "80.00 ขึ้นไป" for the top grade, "70.00–74.99" otherwise. */
 const gradeRangeLabel = (g: PmsCriteriaGrade): string =>
     g.max_score >= 100 ? `${g.min_score.toFixed(2)} ขึ้นไป` : `${g.min_score.toFixed(2)}–${g.max_score.toFixed(2)}`;
+
+/** summaryTotalAvg is already 0-100; this is that same value on the 1-5 rating scale (÷20), for the "X จาก 5 × 20 = Y" caption. */
+const rawAvgOn5Scale = computed<number | null>(() =>
+    summaryTotalAvg.value === null ? null : summaryTotalAvg.value / 20);
 
 // ---- selected_option (1-5) computations ----
 // Per-item mean across ALL raters (includes self) — used for "คะแนนเฉลี่ย" column
