@@ -3,3 +3,39 @@
 @import '@bhplugin/vue3-datatable/dist/style.css';
 @import 'file-upload-with-preview/dist/file-upload-with-preview.min.css';
 @import './tailwind.css';
+
+/* -------------------------------------------------------------
+   Sidebar links
+   -------------------------------------------------------------
+   Global rather than scoped to layouts/pms-layout.vue, because the admin-only
+   entries live in a second component (admin/AdminSidebarNav.vue, kept out of
+   the staff build) and render inside the same <nav>. A scoped rule reaches
+   only its own component's markup, which left those links without their
+   flex layout — icon on one line, label on the next.
+   ------------------------------------------------------------- */
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    color: #4b5563;
+    font-size: 13px;
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sidebar-link:hover {
+    background: #f0f4ff;
+    color: #4361ee;
+}
+.sidebar-link.active {
+    background: #eff2ff;
+    color: #4361ee;
+    font-weight: 600;
+}
+.sidebar-link svg {
+    flex-shrink: 0;
+}

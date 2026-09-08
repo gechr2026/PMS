@@ -179,32 +179,3 @@ const handleLogout = async () => {
     await router.push('/auth/login');
 };
 </script>
-
-<style scoped>
-.sidebar-link {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 10px;
-    border-radius: 8px;
-    color: #4b5563;
-    font-size: 13px;
-    transition: background 0.15s, color 0.15s;
-    text-decoration: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.sidebar-link:hover {
-    background: #f0f4ff;
-    color: #4361ee;
-}
-.sidebar-link.active {
-    background: #eff2ff;
-    color: #4361ee;
-    font-weight: 600;
-}
-.sidebar-link svg {
-    flex-shrink: 0;
-}
-</style>
