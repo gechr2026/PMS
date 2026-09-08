@@ -561,20 +561,40 @@
                     <div>
                         <h3 class="font-bold text-gray-800">ผลการคำนวณคะแนน</h3>
                         <p class="text-xs text-gray-500">คำนวณจากคำตอบปัจจุบัน ยังไม่ได้บันทึก</p>
+                        <p v-if="employee.level" class="mt-0.5 text-xs text-gray-400">สัดส่วนคะแนนตามระดับ: {{ employee.level }}</p>
                     </div>
                 </div>
 
                 <div class="space-y-3">
-                    <div class="flex items-center justify-between rounded-xl border border-amber-200 px-5 py-4" style="background:#fef9c3;">
-                        <span class="text-sm font-semibold text-amber-700">คะแนนการประเมิน KPI</span>
-                        <span class="text-2xl font-bold text-amber-700">{{ fmtScore(previewKpi) }}</span>
+                    <div class="rounded-xl border border-amber-200 px-5 py-4" style="background:#fef9c3;">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-semibold text-amber-700">
+                                คะแนนการประเมิน KPI
+                                <span class="block text-xs font-normal text-amber-600">(เต็ม {{ assessmentKpiWeight }} คะแนน)</span>
+                            </span>
+                            <span class="flex items-baseline gap-2">
+                                <span class="text-2xl font-bold text-red-600">{{ fmtScore(previewKpiWeighted) }}</span>
+                                <span class="text-lg font-semibold text-amber-700">{{ fmtScore(previewKpi) }}</span>
+                            </span>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between rounded-xl border border-blue-200 px-5 py-4" style="background:#dbeafe;">
-                        <span class="text-sm font-semibold text-blue-700">คะแนนการประเมิน Competency</span>
-                        <span class="text-2xl font-bold text-blue-700">{{ fmtScore(previewCompetency) }}</span>
+                    <div class="rounded-xl border border-blue-200 px-5 py-4" style="background:#dbeafe;">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-semibold text-blue-700">
+                                คะแนนการประเมิน Competency
+                                <span class="block text-xs font-normal text-blue-600">(เต็ม {{ assessmentCompWeight }} คะแนน)</span>
+                            </span>
+                            <span class="flex items-baseline gap-2">
+                                <span class="text-2xl font-bold text-red-600">{{ fmtScore(previewCompWeighted) }}</span>
+                                <span class="text-lg font-semibold text-blue-700">{{ fmtScore(previewCompetency) }}</span>
+                            </span>
+                        </div>
                     </div>
                     <div class="flex items-center justify-between rounded-xl border border-green-200 px-5 py-4" style="background:#dcfce7;">
-                        <span class="text-sm font-semibold text-green-700">ผลการประเมินรวม</span>
+                        <span class="text-sm font-semibold text-green-700">
+                            ผลการประเมินรวม
+                            <span class="block text-xs font-normal text-green-600">(รวม 100 คะแนน)</span>
+                        </span>
                         <span class="text-2xl font-bold text-green-700">{{ fmtScore(previewTotal) }}</span>
                     </div>
                 </div>
@@ -828,6 +848,16 @@ const previewTotal = computed(() => {
             (previewCompetency.value ?? 0) * assessmentCompWeight.value) / 100,
     );
 });
+
+// Each section's 0-100 score rescaled to the assessment's own weight ratio —
+// e.g. 74.00% of a 50-point KPI section is worth 37.00 points. The ratio
+// itself (assessmentKpiWeight/assessmentCompWeight) varies by the
+// assessment's level, so this shows what "full marks" means for this
+// employee specifically, not a fixed 50/50 split.
+const previewKpiWeighted = computed(() =>
+    previewKpi.value === null ? null : round2((previewKpi.value * assessmentKpiWeight.value) / 100));
+const previewCompWeighted = computed(() =>
+    previewCompetency.value === null ? null : round2((previewCompetency.value * assessmentCompWeight.value) / 100));
 
 const fmtScore = (n: number | null) => (n === null ? '—' : n.toFixed(2));
 

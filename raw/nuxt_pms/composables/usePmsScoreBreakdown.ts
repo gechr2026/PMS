@@ -60,12 +60,9 @@ export const usePmsScoreBreakdown = () => {
      * counted. Returns null when nobody contributed — callers show '—'.
      */
     const itemAvgExclSelf = (raters: PmsScoreRater[] | null | undefined): number | null => {
-        const counted = (raters ?? []).filter(r =>
-            r.evaluator_role !== 'self'
-            && !r.is_closed
-            && r.selected_option !== null
-            && r.selected_option !== undefined
-            && Number(r.selected_option) !== 0
+        const counted = (raters ?? []).filter(
+            (r) =>
+                r.evaluator_role !== 'self' && !r.is_closed && r.selected_option !== null && r.selected_option !== undefined && Number(r.selected_option) !== 0,
         );
         if (counted.length === 0) return null;
         const sum = counted.reduce((s, r) => s + Number(r.selected_option), 0);
@@ -80,20 +77,14 @@ export const usePmsScoreBreakdown = () => {
     };
 
     /** Σ of a section's earned scores. Items nobody rated contribute nothing. */
-    const sectionSubtotal = <TItem extends PmsScorableItem>(
-        items: TItem[] | null | undefined,
-        ratersOf: (item: TItem) => PmsScoreRater[],
-    ): number =>
+    const sectionSubtotal = <TItem extends PmsScorableItem>(items: TItem[] | null | undefined, ratersOf: (item: TItem) => PmsScoreRater[]): number =>
         (items ?? []).reduce((s, item) => s + (itemEarnedScore(item, ratersOf(item)) ?? 0), 0);
 
     /** A section's contribution to the 100-point result: (subtotal ÷ 5) × its header weight. */
-    const sectionScore100 = (subtotal: number, headerWeight: number): number =>
-        (subtotal / 5) * Number(headerWeight ?? 0);
+    const sectionScore100 = (subtotal: number, headerWeight: number): number => (subtotal / 5) * Number(headerWeight ?? 0);
 
     /** Every headline number for one send, in one pass. */
-    const computeBreakdown = <TItem extends PmsScorableItem>(
-        input: PmsScoreBreakdownInput<TItem>,
-    ): PmsScoreBreakdown => {
+    const computeBreakdown = <TItem extends PmsScorableItem>(input: PmsScoreBreakdownInput<TItem>): PmsScoreBreakdown => {
         const kpiSubtotal = sectionSubtotal(input.kpis, input.ratersOf);
         const competencySubtotal = sectionSubtotal(input.competencies, input.ratersOf);
         const kpiWeight = Number(input.kpiWeight ?? 0);
