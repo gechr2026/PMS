@@ -13,9 +13,23 @@ export interface RouteAcl {
     roles: PmsRole[];
 }
 
+// Admin-only rules exist only in the admin build. `__PMS_ADMIN__` is folded to
+// false when building the staff app (see nuxt.config.ts), which drops this
+// branch and the admin URLs inside it — those routes aren't registered there,
+// so no employee can find them by reading the bundle.
+const ADMIN_ACL: RouteAcl[] = __PMS_ADMIN__
+    ? [
+          { prefix: '/pms/settings', roles: ['admin'] },
+          { prefix: '/pms/reports-edit', roles: ['admin'] },
+      ]
+    : [];
+
+// Destructured so the shortcuts below can name their prefix without repeating
+// the literal — repeating it would leak the URL back into the staff bundle.
+const [SETTINGS_ACL, REPORTS_EDIT_ACL] = ADMIN_ACL;
+
 export const ROUTE_ACL: RouteAcl[] = [
-    { prefix: '/pms/settings',        roles: ['admin'] },
-    { prefix: '/pms/reports-edit',     roles: ['admin'] },
+    ...ADMIN_ACL,
     { prefix: '/pms/reports',         roles: ['admin', 'executive', 'manager'] },
     { prefix: '/pms/evaluation',      roles: ['admin', 'executive', 'manager'] },
     { prefix: '/pms/summary',         roles: ['admin', 'executive', 'manager'] },
@@ -40,10 +54,11 @@ export const usePmsAcl = () => {
         return match.roles.includes(asRole);
     };
 
-    // Boolean shortcuts the sidebar binds to.
-    const canSeeSettings     = computed(() => canAccess('/pms/settings'));
+    // Boolean shortcuts the sidebar binds to. The two admin ones are constantly
+    // false in the staff build, where those routes don't exist.
+    const canSeeSettings     = computed(() => !!SETTINGS_ACL && canAccess(SETTINGS_ACL.prefix));
+    const canSeeReportsEdit  = computed(() => !!REPORTS_EDIT_ACL && canAccess(REPORTS_EDIT_ACL.prefix));
     const canSeeReports      = computed(() => canAccess('/pms/reports'));
-    const canSeeReportsEdit  = computed(() => canAccess('/pms/reports-edit'));
     const canSeeSummary      = computed(() => canAccess('/pms/summary'));
     const canSeeTracking     = computed(() => canAccess('/pms/report/tracking'));
     const canSeeCompare      = computed(() => canAccess('/pms/compare'));

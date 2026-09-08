@@ -102,7 +102,10 @@
                             />
                         </div>
 
-                        <div>
+                        <!-- Password: admin build only. The staff build has no password
+                             field at all, so nothing on this page hints that an admin
+                             tier exists. -->
+                        <div v-if="IS_ADMIN_BUILD">
                             <label class="flex flex-wrap items-center gap-x-2 text-gray-600 text-xs sm:text-sm mb-1.5 sm:mb-2 font-medium">
                                 <span class="flex items-center gap-2">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -112,7 +115,6 @@
                                     </svg>
                                     รหัสผ่าน
                                 </span>
-                                <span class="text-[10px] sm:text-xs text-gray-400 font-normal">(เฉพาะ admin — ผู้ใช้อื่นเว้นว่าง)</span>
                             </label>
                             <input
                                 v-model="form.password"
@@ -227,6 +229,10 @@ const router = useRouter();
 const route  = useRoute();
 const { signIn, verifyOtp } = useAuth();
 
+// Compile-time constant: true only in the locally-run admin build.
+// See docs/superpowers/specs/2026-09-08-admin-build-separation-design.md
+const IS_ADMIN_BUILD = __PMS_ADMIN__;
+
 const form = reactive({
     email: '',
     password: '',
@@ -279,9 +285,16 @@ const handleStart = async () => {
         return;
     }
 
+    if (IS_ADMIN_BUILD && !form.password) {
+        errorMessage.value = 'กรุณากรอกรหัสผ่าน';
+        return;
+    }
+
     loading.value = true;
     try {
-        const res = await signIn(email, form.password || undefined);
+        // The staff build never sends a password. Asking the server which method
+        // an address uses is exactly what let anyone identify the admins.
+        const res = await signIn(email, IS_ADMIN_BUILD ? form.password : undefined);
         if (res.method === 'password') {
             // session already installed by useAuth
             await redirectAfterLogin();

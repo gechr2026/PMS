@@ -1,3 +1,21 @@
+// =============================================================
+// Build variants
+// =============================================================
+// The staff build is deployed to the internet; the admin build is run locally
+// and is never published. Admin routes are stripped out of the staff build
+// entirely, so no employee can discover them by reading the bundle.
+//
+//   PMS_VARIANT=staff pnpm build   (default)
+//   PMS_VARIANT=admin pnpm build
+//
+// The default is deliberately `staff`: forgetting the variable yields the safe
+// build, never the leaky one.
+// See docs/superpowers/specs/2026-09-08-admin-build-separation-design.md
+const IS_ADMIN_BUILD = process.env.PMS_VARIANT === 'admin';
+
+/** Route prefixes that exist only in the admin build. */
+const ADMIN_ONLY_ROUTES = ['/pms/settings', '/pms/reports-edit'];
+
 export default defineNuxtConfig({
     app: {
         head: {
@@ -61,8 +79,34 @@ export default defineNuxtConfig({
         langDir: 'locales/',
     },
 
+    // Strip admin routes from the staff build. Nuxt generates its route imports
+    // from this table, so the removed pages never become chunks.
+    hooks: {
+        'pages:extend'(pages) {
+            if (IS_ADMIN_BUILD) return;
+            const strip = (list: typeof pages) => {
+                for (let i = list.length - 1; i >= 0; i--) {
+                    const page = list[i];
+                    const isAdminRoute = ADMIN_ONLY_ROUTES.some(
+                        (prefix) => page.path === prefix || page.path.startsWith(prefix + '/'),
+                    );
+                    if (isAdminRoute) {
+                        list.splice(i, 1);
+                        continue;
+                    }
+                    if (page.children?.length) strip(page.children);
+                }
+            };
+            strip(pages);
+        },
+    },
+
     vite: {
         optimizeDeps: { include: ['quill'] },
+        // Compile-time flag. Read it into a <script setup> binding before a
+        // template uses it: a bare __PMS_ADMIN__ inside a template compiles to
+        // _ctx.__PMS_ADMIN__, a member expression `define` does not substitute.
+        define: { __PMS_ADMIN__: IS_ADMIN_BUILD },
     },
 
     router: {
