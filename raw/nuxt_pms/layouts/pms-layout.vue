@@ -92,10 +92,10 @@
                         </svg>
                         <span>รายงาน</span>
                     </NuxtLink>
-                    <component :is="AdminNav" v-if="AdminNav" section="reports" />
+                    <ClientOnly><component :is="AdminNav" v-if="AdminNav" section="reports" /></ClientOnly>
                 </template>
 
-                <component :is="AdminNav" v-if="AdminNav" section="settings" />
+                <ClientOnly><component :is="AdminNav" v-if="AdminNav" section="settings" /></ClientOnly>
             </nav>
         </aside>
 
@@ -161,6 +161,13 @@ const acl = usePmsAcl();
 // Admin-only sidebar entries live outside every auto-scan directory and are
 // reached only through this branch. `__PMS_ADMIN__` folds to false in the staff
 // build, so the import — and the chunk behind it — is dropped entirely.
+//
+// The mount points are wrapped in <ClientOnly>: SSR renders an async component
+// by awaiting it, but on the client hydration starts before the chunk has
+// loaded, so the server's markup meets a placeholder and Vue reports
+// "Hydration completed but contains mismatches". Rendering it after mount
+// sidesteps that. The rest of this sidebar is already effectively client-only —
+// every acl.canSee* flag reads a profile that is loaded from localStorage.
 const AdminNav = __PMS_ADMIN__
     ? defineAsyncComponent(() => import('~/admin/AdminSidebarNav.vue'))
     : null;
