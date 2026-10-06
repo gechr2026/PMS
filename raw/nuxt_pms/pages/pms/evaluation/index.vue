@@ -90,8 +90,12 @@
                             </td>
                             <td class="px-4 py-3 text-center text-gray-600">{{ item.year }}</td>
                             <td class="px-4 py-3 text-center text-gray-600">{{ item.cycle_label }}</td>
-                            <td class="px-4 py-3 text-center font-semibold text-gray-800">
-                                {{ formatScore(item.final_total_score ?? item.avg_total_score) }}
+                            <td class="px-4 py-3 text-center">
+                                <template v-if="isProvisional(item)">
+                                    <div class="font-semibold text-gray-400">{{ formatScore(item.avg_total_score) }}</div>
+                                    <div class="text-[11px] text-gray-400" title="ค่าเฉลี่ยจากผู้ประเมินที่ส่งแล้ว ยังไม่ใช่คะแนนจริง">เฉลี่ยชั่วคราว</div>
+                                </template>
+                                <span v-else class="font-semibold text-gray-800">{{ formatScore(item.final_total_score) }}</span>
                             </td>
                             <td class="px-4 py-3 text-center">
                                 <span
@@ -99,6 +103,10 @@
                                     class="inline-block rounded-full px-3 py-1 text-xs font-bold"
                                     :class="gradeClass(item.final_grade)"
                                 >{{ item.final_grade }}</span>
+                                <span
+                                    v-else-if="isAwaitingSupervisor(item)"
+                                    class="inline-block whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700"
+                                >รอหัวหน้าประเมิน</span>
                                 <span v-else class="text-xs text-gray-400">—</span>
                             </td>
                             <td class="px-4 py-3 text-center">
@@ -172,6 +180,15 @@ const formatScore = (n: number | null): string => {
     if (n === null || n === undefined) return '—';
     return Number(n).toFixed(2);
 };
+
+// The view only fills final_total_score once the deciding rater has submitted
+// (ceo/executive/manager for annual_supervisor). Until then the page falls back
+// to avg_total_score, which mixes self/peer ratings and must not read as final.
+const isProvisional = (item: PmsEvaluationResultRow) =>
+    item.final_total_score === null && item.avg_total_score !== null;
+
+const isAwaitingSupervisor = (item: PmsEvaluationResultRow) =>
+    item.assessment_type === 'annual_supervisor' && item.final_total_score === null;
 
 const gradeClass = (grade: string | null) => {
     if (!grade) return 'bg-gray-100 text-gray-600';
