@@ -119,6 +119,10 @@ export default defineNuxtConfig({
         public: {
             supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL || 'https://zfhntrmbawjyztafmqrh.supabase.co',
             supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_KEY || 'sb_publishable_tK-v5_UE_Tlw3yMGnFTCTQ_HVdsxbUW',
+            // Where emailed links point. The admin build runs on the HR machine,
+            // so window.location.origin there is localhost — raters need the
+            // staff deployment instead. Override with NUXT_PUBLIC_STAFF_APP_URL.
+            staffAppUrl: process.env.NUXT_PUBLIC_STAFF_APP_URL || 'https://pms-ten-delta.vercel.app',
         },
     },
 

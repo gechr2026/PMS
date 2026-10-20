@@ -738,6 +738,9 @@ const sendRater = async (idx: number) => {
 };
 
 // ── Email notification after send ────────────────────────────────────
+// Links go to the staff deployment, not this page's origin (localhost on the HR machine).
+const staffAppUrl = String(useRuntimeConfig().public.staffAppUrl).replace(/\/+$/, '');
+
 const sendEmailToRater = async (row: EvaluatorRow): Promise<void> => {
     const raterEmp = employeeMaster.value.find(e => e.id === row.evaluator_employee_id);
     const toEmail = raterEmp?.username ?? '';
@@ -747,7 +750,6 @@ const sendEmailToRater = async (row: EvaluatorRow): Promise<void> => {
     const assessmentName = allAssessments.value.find(a => a.id === row.assessment_id)?.name ?? '—';
     const roleName       = ALL_ROLES.find(r => r.value === row.evaluator_role)?.label ?? row.evaluator_role;
     const cycleLabel     = cycleOptions.value.find(c => c.id === form.cycle_id)?.cycle_label ?? '—';
-    const appUrl         = typeof window !== 'undefined' ? window.location.origin : '';
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -777,7 +779,7 @@ const sendEmailToRater = async (row: EvaluatorRow): Promise<void> => {
     </tr>
   </table>
   <div style="text-align:center;margin:28px 0;">
-    <a href="${appUrl}/pms/assigned"
+    <a href="${staffAppUrl}/pms/assigned"
        style="background:#4361ee;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">
       เข้าสู่ระบบเพื่อประเมิน
     </a>
